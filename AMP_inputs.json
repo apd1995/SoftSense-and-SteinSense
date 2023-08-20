@@ -1,0 +1,21 @@
+{
+"signal_nrow_lower": 50,
+"signal_nrow_upper": 50,
+"signal_nrow_len": 1,
+"signal_ncol_lower": 4,
+"signal_ncol_upper": 5,
+"signal_ncol_len": 2,
+"sparsity_grid_lower": 0.01,
+"sparsity_grid_upper": 0.99,
+"sparsity_grid_len": 99,
+"delta_grid_lower": 0.01,
+"delta_grid_upper": 0.99,
+"delta_grid_len": 99,
+"nMonte": 25,
+"max_iter": 200,
+"err_tol": 1e-5,
+"sparsity_tol": 1e-4,
+"denoiser": "james-stein",
+"output_json_filename": "AMP_inputs_expanded.json",
+"output_data_filename": "AMP_data_output.csv"
+}
