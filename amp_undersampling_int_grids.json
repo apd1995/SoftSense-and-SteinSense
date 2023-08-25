@@ -1,0 +1,239 @@
+{
+    "table_name": "amp-integer-grids",
+    "base_index": 0,
+    "db_url": "sqlite:///data/EMS.db3",
+    "multi_res": [
+        {
+            "nonzero_rows": [
+                10
+            ],
+            "num_measurements": [
+                10,
+                20,
+                30,
+                40
+            ],
+            "signal_nrow": [
+                50
+            ],
+            "signal_ncol": [
+                1
+            ],
+            "mc": [
+                0
+            ],
+            "max_iter": [
+                100
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ]
+        },
+        {
+            "nonzero_rows": [
+                20
+            ],
+            "num_measurements": [
+                10,
+                20,
+                30,
+                40
+            ],
+            "signal_nrow": [
+                50
+            ],
+            "signal_ncol": [
+                1
+            ],
+            "mc": [
+                0
+            ],
+            "max_iter": [
+                100
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ]
+        },
+        {
+            "nonzero_rows": [
+                30
+            ],
+            "num_measurements": [
+                10,
+                20,
+                30,
+                40
+            ],
+            "signal_nrow": [
+                50
+            ],
+            "signal_ncol": [
+                1
+            ],
+            "mc": [
+                0
+            ],
+            "max_iter": [
+                100
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ]
+        },
+        {
+            "nonzero_rows": [
+                40
+            ],
+            "num_measurements": [
+                10,
+                20,
+                30,
+                40
+            ],
+            "signal_nrow": [
+                50
+            ],
+            "signal_ncol": [
+                1
+            ],
+            "mc": [
+                0
+            ],
+            "max_iter": [
+                100
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ]
+        },
+        {
+            "nonzero_rows": [
+                10
+            ],
+            "num_measurements": [
+                10,
+                20,
+                30,
+                40
+            ],
+            "signal_nrow": [
+                50
+            ],
+            "signal_ncol": [
+                5
+            ],
+            "mc": [
+                0
+            ],
+            "max_iter": [
+                100
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ]
+        },
+        {
+            "nonzero_rows": [
+                20
+            ],
+            "num_measurements": [
+                10,
+                20,
+                30,
+                40
+            ],
+            "signal_nrow": [
+                50
+            ],
+            "signal_ncol": [
+                5
+            ],
+            "mc": [
+                0
+            ],
+            "max_iter": [
+                100
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ]
+        },
+        {
+            "nonzero_rows": [
+                30
+            ],
+            "num_measurements": [
+                10,
+                20,
+                30,
+                40
+            ],
+            "signal_nrow": [
+                50
+            ],
+            "signal_ncol": [
+                5
+            ],
+            "mc": [
+                0
+            ],
+            "max_iter": [
+                100
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ]
+        },
+        {
+            "nonzero_rows": [
+                40
+            ],
+            "num_measurements": [
+                10,
+                20,
+                30,
+                40
+            ],
+            "signal_nrow": [
+                50
+            ],
+            "signal_ncol": [
+                5
+            ],
+            "mc": [
+                0
+            ],
+            "max_iter": [
+                100
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ]
+        }
+    ]
+}
