@@ -30,19 +30,6 @@ def seed(nonzero_rows: float, num_measurements: float, signal_nrow: float, signa
     return round(1 + round(nonzero_rows * 1000) + round(num_measurements * 1000) + round(signal_nrow * 1000) + round(signal_ncol * 1000) + round(err_tol * 100000) + mc * 100000 + round(sparsity_tol * 1000000))
 
 
-# def _df(c: list, l: list):
-#     d = dict(zip(c, l))
-#     return DataFrame(data=d)
-
-
-def df_experiment(dict_params, dict_observables):
-    dict_params.update(dict_observables)
-    return DataFrame(data = dict_params)
-    # c = list(dict_combined)
-    # d = list(dict_combined.values())
-    # return _df(c, d)
-
-
 def gen_iid_normal_mtx(num_measurements, signal_nrow, rng):
     """
     Generates a single random num_measurements by signal_nrow matrix with iid signal_nrow(0,1) entries
@@ -101,7 +88,7 @@ def recovery_stats(X_true: float,
     return dict_observables
 
 
-def run_amp_instance(dict_params):
+def run_amp_instance(*, dict_params):
     
     k = dict_params['nonzero_rows']
     n = dict_params['num_measurements']
@@ -123,6 +110,8 @@ def run_amp_instance(dict_params):
     Y = A @ signal_true
     
     sparsity = k/N
+    dict_params['sparsity'] = sparsity
+    dict_params['undersampling_ratio'] = n/N
     
     tau = minimax_tau_threshold(sparsity, B)
     
@@ -141,8 +130,9 @@ def run_amp_instance(dict_params):
                                sparsity_tol,
                                time_seconds)
     rel_err = rec_stats_dict['rel_err']
-    
     rec_stats_dict['iter_count'] = iter_count
+    running_min_rel_err = rel_err
+    rec_stats_dict['running_min_rel_err'] = running_min_rel_err
     dict_observables = rec_stats_dict
     for key in list(dict_observables):
         dict_observables[key] = [dict_observables[key]]
@@ -169,10 +159,13 @@ def run_amp_instance(dict_params):
                                    time_seconds)
         rel_err = rec_stats_dict['rel_err']
         rec_stats_dict['iter_count'] = iter_count
+        running_min_rel_err = min(rel_err, running_min_rel_err)
+        rec_stats_dict['running_min_rel_err'] = running_min_rel_err
         for key in list(dict_observables):
             dict_observables[key] = dict_observables[key] + [rec_stats_dict[key]]
-            
-    return df_experiment(dict_params, dict_observables)
+
+    return DataFrame(data = {**dict_params, **dict_observables})
+
 
 
 def test_experiment() -> dict:
@@ -228,8 +221,7 @@ def do_coiled_experiment():
     )
     with coiled.Cluster(software=software_environment, n_workers=10) as cluster:
         with Client(cluster) as client:
-            do_on_cluster(exp, run_amp_instance, client, credentials=None)
-            #do_on_cluster(exp, block_bp_instance_df, client, credentials=get_gbq_credentials())
+            do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
             # do_on_cluster(exp, block_bp_instance_df, client, project_id='coiled-data@hs-deep-lab-donoho.iam.gserviceaccount.com')
 
 
@@ -259,14 +251,8 @@ def do_test():
     exp = test_experiment()
     print(exp)
     pass
-    # df = block_bp_instance_df(nonzero_rows = 5,
-    #                           num_measurements = 10,
-    #                           signal_nrow = 50,
-    #                           signal_ncol = 10,
-    #                           mc = 0,
-    #                           err_tol = 1e-5,
-    #                           sparsity_tol = 1e-4)
-    # print(df)
+    df = run_amp_instance(dict_params = exp)
+    df.to_csv("temp.csv")
 
 
 def count_params(json_file: str):
