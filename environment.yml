@@ -1,0 +1,26 @@
+name: MatrixRecovery
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - blas[build=mkl]
+  - numpy
+  - python=3.10
+  - icu>=70.1
+  - cairo>=1.16.0
+  - pandas
+  - google-auth
+  - pandas-gbq>=0.19.2
+  - cvxpy
+  - dask
+  - coiled
+  - sqlalchemy
+  - pg8000
+  - cloud-sql-python-connector
+  - pip
+  - pip:
+    - git+https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/adonoho/EMS.git
+variables:
+  MKL_NUM_THREADS: '1'
+  OPENBLAS_NUM_THREADS: '1'
+prefix: /Users/awd/opt/anaconda3/envs/MatrixRecovery
