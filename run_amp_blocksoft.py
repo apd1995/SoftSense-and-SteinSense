@@ -83,12 +83,12 @@ def recovery_stats(X_true: float,
     
     end_time = time.time()
     
-    dict_observables.update({'time_seconds': round(time_seconds + end_time - start_time, 2)})
+    dict_observables['time_seconds'] = round(time_seconds + end_time - start_time, 2)
     
     return dict_observables
 
 
-def run_amp_instance(*, dict_params):
+def run_amp_instance(**dict_params):
     
     k = dict_params['nonzero_rows']
     n = dict_params['num_measurements']
