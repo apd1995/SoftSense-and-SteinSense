@@ -9,6 +9,7 @@ dependencies:
   - icu>=70.1
   - cairo>=1.16.0
   - pandas
+  - autograd
   - google-auth
   - pandas-gbq>=0.19.2
   - cvxpy
