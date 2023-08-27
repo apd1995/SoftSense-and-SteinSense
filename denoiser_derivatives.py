@@ -20,17 +20,3 @@ def block_soft_thresholding_jacobian(y, tau, Sigma):
     
     jacobian_func = jacobian(block_soft_thresholding)
     return jacobian_func(y, tau = tau, Sigma = Sigma).T
-
-# =============================================================================
-# # x = np.array([5,3], dtype=float)
-
-# # def cost(x, pagla, rishi):
-# #     return pagla*np.array([[1,2], [3,4]]) @ x + rishi*x
-
-# # #gradient_cost = grad(cost)
-# # jacobian_cost = jacobian(cost)
-
-# # #gradient_cost(x)
-# # jacobian_cost(x, pagla = 2, rishi = 4)
-
-# =============================================================================
