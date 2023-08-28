@@ -6,12 +6,15 @@ Created on Fri Aug 25 09:07:53 2023
 @author: apratimdey
 """
 
-import numpy as np
+import autograd.numpy as np
 
 
 def block_soft_thresholding_nonsingular(y, tau, Sigma):
     quad_whitening = y.T @ np.linalg.inv(Sigma) @ y
-    return y * max(0, 1 - (tau/quad_whitening**0.5))
+    if quad_whitening > 0:
+        return y * max(0, 1 - (tau/np.sqrt(quad_whitening)))
+    else:
+        return y
 
 
 def block_soft_thresholding_singular(y, tau, Sigma):
