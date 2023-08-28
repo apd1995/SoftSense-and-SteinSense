@@ -100,7 +100,7 @@ def run_amp_instance(**dict_params):
     signal_true[nonzero_indices, :] = rng.normal(0, 1, (k, B))
    
     A = gen_iid_normal_mtx(n, N, rng)/np.sqrt(n)
-    Y = A @ signal_true
+    Y = np.matmul(A, signal_true)
     
     sparsity = k/N
     dict_params['sparsity'] = sparsity
@@ -132,8 +132,17 @@ def run_amp_instance(**dict_params):
         
         signal_denoised_prev = signal_denoised_current
         Residual_prev = Residual_current
-        noise_cov_current = Residual_prev.T @ Residual_prev/n
-        dict_current = amp.amp_iteration(A, Y, signal_denoised_prev, Residual_prev, tau, noise_cov_current)
+        noise_cov_current = np.matmul(Residual_prev.T, Residual_prev)/n
+        
+        if np.linalg.det(noise_cov_current) > 0:
+            noise_cov_current_inv = np.linalg.inv(noise_cov_current)
+            dict_current = amp.amp_iteration_nonsingular(A, Y, signal_denoised_prev, Residual_prev, tau, noise_cov_current_inv)
+        else:
+            D, U = np.linalg.eigh(noise_cov_current)
+            nonzero_indices = (D>0)
+            D_nonzero_inv = 1/D[nonzero_indices]
+            dict_current = amp.amp_iteration_singular(A, Y, signal_denoised_prev, Residual_prev, tau, D, U, nonzero_indices, D_nonzero_inv)
+        
         signal_denoised_current = dict_current['signal_denoised_current']
         Residual_current = dict_current['Residual_current']
         
@@ -154,7 +163,6 @@ def run_amp_instance(**dict_params):
 
     #return DataFrame(data = {**dict_params, **dict_observables}).set_index('iter_count')
     return DataFrame(data = {**dict_params, **dict_observables}, index = [0])
-
 
 
 def test_experiment() -> dict:
