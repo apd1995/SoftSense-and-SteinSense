@@ -110,7 +110,7 @@ def run_amp_instance(**dict_params):
     
     iter_count = 0
     
-    start_time = time.time()
+    tick = time.perf_counter()
     
     signal_denoised_current = np.zeros((N, B), dtype = float)
     Residual_current = Y
@@ -130,8 +130,6 @@ def run_amp_instance(**dict_params):
         
         iter_count = iter_count + 1
         
-        start_time = time.time()
-        
         signal_denoised_prev = signal_denoised_current
         Residual_prev = Residual_current
         noise_cov_current = Residual_prev.T @ Residual_prev/n
@@ -149,10 +147,10 @@ def run_amp_instance(**dict_params):
         # for key in list(dict_observables):
         #     dict_observables[key] = dict_observables[key] + [rec_stats_dict[key]]
     
-    end_time = time.time()
+    tock = time.perf_counter() - tick
     dict_observables['min_rel_err'] = min_rel_err
     dict_observables['iter_count'] = iter_count
-    dict_observables['time_seconds'] = round(end_time - start_time, 2)
+    dict_observables['time_seconds'] = round(tock, 2)
 
     #return DataFrame(data = {**dict_params, **dict_observables}).set_index('iter_count')
     return DataFrame(data = {**dict_params, **dict_observables}, index = [0])
