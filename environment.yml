@@ -1,4 +1,4 @@
-name: MatrixRecovery
+name: AMPMatrixRecovery
 channels:
   - conda-forge
   - defaults
@@ -24,4 +24,4 @@ dependencies:
 variables:
   MKL_NUM_THREADS: '1'
   OPENBLAS_NUM_THREADS: '1'
-prefix: /Users/awd/opt/anaconda3/envs/MatrixRecovery
+prefix: /Users/awd/opt/anaconda3/envs/AMPMatrixRecovery
