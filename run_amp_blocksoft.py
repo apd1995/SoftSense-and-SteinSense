@@ -12,7 +12,7 @@ import cvxpy as cvx
 from pandas import DataFrame
 import time
 import amp_iteration as amp
-from minimax_tau_threshold import minimax_tau_threshold
+import rpy2.robjects as robjects
 
 from EMS.manager import do_on_cluster, get_gbq_credentials, do_test_experiment, read_json, unroll_experiment
 from dask.distributed import Client, LocalCluster
@@ -82,6 +82,10 @@ def recovery_stats(X_true: float,
 
 
 def run_amp_instance(**dict_params):
+
+    r = robjects.r
+    r.source('minimax_blocksoft_threshold.R')
+    minimax_threshold = robjects.globalenv['minimax_threshold']
     
     k = dict_params['nonzero_rows']
     n = dict_params['num_measurements']
