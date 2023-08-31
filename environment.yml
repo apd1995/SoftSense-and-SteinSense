@@ -18,7 +18,6 @@ dependencies:
   - sqlalchemy
   - pg8000
   - cloud-sql-python-connector
-  - rpy2
   - pip
   - pip:
     - git+https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/adonoho/EMS.git
