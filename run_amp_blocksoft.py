@@ -12,7 +12,7 @@ import cvxpy as cvx
 from pandas import DataFrame
 import time
 import amp_iteration as amp
-import rpy2.robjects as robjects
+from minimax_tau_threshold import minimax_tau_threshold
 
 from EMS.manager import do_on_cluster, get_gbq_credentials, do_test_experiment, read_json, unroll_experiment
 from dask.distributed import Client, LocalCluster
@@ -82,10 +82,6 @@ def recovery_stats(X_true: float,
 
 
 def run_amp_instance(**dict_params):
-
-    r = robjects.r
-    r.source('minimax_blocksoft_threshold.R')
-    minimax_threshold = robjects.globalenv['minimax_threshold']
     
     k = dict_params['nonzero_rows']
     n = dict_params['num_measurements']
@@ -110,7 +106,7 @@ def run_amp_instance(**dict_params):
     dict_params['sparsity'] = sparsity
     dict_params['undersampling_ratio'] = n/N
     
-    tau = minimax_threshold(sparsity, B)[0]
+    tau = minimax_tau_threshold(sparsity, B)
     
     iter_count = 0
     
@@ -236,14 +232,14 @@ def do_local_experiment():
 
 def read_and_do_local_experiment(json_file: str):
     exp = read_json(json_file)
-    with LocalCluster(dashboard_address='localhost:8787') as cluster:
+    with LocalCluster(dashboard_address='localhost:8787', n_workers=32, threads_per_worker=1) as cluster:
         with Client(cluster) as client:
             do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
 
 
 def do_test_exp():
     exp = test_experiment()
-    with LocalCluster(dashboard_address='localhost:8787', n_workers=32, threads_per_worker=1) as cluster:
+    with LocalCluster(dashboard_address='localhost:8787') as cluster:
         with Client(cluster) as client:
             do_test_experiment(exp, run_amp_instance, client, credentials=get_gbq_credentials())
 
