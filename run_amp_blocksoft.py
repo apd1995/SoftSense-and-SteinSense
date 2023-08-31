@@ -110,7 +110,7 @@ def run_amp_instance(**dict_params):
     dict_params['sparsity'] = sparsity
     dict_params['undersampling_ratio'] = n/N
     
-    tau = minimax_tau_threshold(sparsity, B)
+    tau = minimax_threshold(sparsity, B)[0]
     
     iter_count = 0
     
