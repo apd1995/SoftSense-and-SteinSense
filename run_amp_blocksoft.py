@@ -139,7 +139,7 @@ def run_amp_instance(**dict_params):
             dict_current = amp.amp_iteration_nonsingular(A, Y, signal_denoised_prev, Residual_prev, tau, noise_cov_current_inv)
         else:
             D, U = np.linalg.eigh(noise_cov_current)
-            D = round(D, 10)
+            D = np.round(D, 10)
             nonzero_indices = (D>0)
             D_nonzero_inv = 1/D[nonzero_indices]
             dict_current = amp.amp_iteration_singular(A, Y, signal_denoised_prev, Residual_prev, tau, U, nonzero_indices, D_nonzero_inv)
@@ -234,7 +234,9 @@ def do_local_experiment():
 def read_and_do_local_experiment(json_file: str):
     exp = read_json(json_file)
     with LocalCluster(dashboard_address='localhost:8787', n_workers=32, threads_per_worker=1) as cluster:
+    # with LocalCluster(dashboard_address='localhost:8787') as cluster:
         with Client(cluster) as client:
+            # do_on_cluster(exp, run_amp_instance, client, credentials=None)
             do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
 
 
