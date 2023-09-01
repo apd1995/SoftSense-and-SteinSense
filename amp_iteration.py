@@ -14,8 +14,8 @@ at current iteration.
 """
 
 import numpy as np
-from block_soft_thresholding import block_soft_thresholding_nonsingular, block_soft_thresholding_singular
-from denoiser_derivatives import block_soft_thresholding_jacobian_nonsingular, block_soft_thresholding_jacobian_singular
+import block_soft_thresholding as bs
+import denoiser_derivatives as dd
 
 
 def update_signal_noisy(A: float,
@@ -29,59 +29,60 @@ def update_signal_denoised_nonsingular(signal_noisy_current: float,
                            tau: float,
                            noise_cov_current_inv: float):
     
-    return np.apply_along_axis(block_soft_thresholding_nonsingular, 1, signal_noisy_current, tau, noise_cov_current_inv)
+    return bs.block_soft_thresholding_nonsingular(signal_noisy_current, tau, noise_cov_current_inv)
 
 
 def update_signal_denoised_singular(signal_noisy_current: float,
                            tau: float,
-                           noise_cov_current_eigvals: float,
                            noise_cov_current_eigvecs: float,
                            noise_cov_current_nonzero_indices,
                            noise_cov_current_nonzero_eigvals_inv: float):
     
-    return np.apply_along_axis(block_soft_thresholding_singular, 1, signal_noisy_current, tau, noise_cov_current_eigvals, noise_cov_current_eigvecs, noise_cov_current_nonzero_indices, noise_cov_current_nonzero_eigvals_inv)
+    return bs.block_soft_thresholding_singular(signal_noisy_current, tau, noise_cov_current_eigvecs, noise_cov_current_nonzero_indices, noise_cov_current_nonzero_eigvals_inv)
 
 
-def onsager_matrix_nonsingular(signal_noisy_current: float,
-                   tau: float,
-                    noise_cov_current_inv: float,
-                    num_measurements: float):
+# def onsager_matrix_nonsingular(signal_noisy_current: float,
+#                    tau: float,
+#                     noise_cov_current_inv: float,
+#                     num_measurements: float):
     
-    jacobian_array = np.apply_along_axis(block_soft_thresholding_jacobian_nonsingular, 1, signal_noisy_current, tau, noise_cov_current_inv)
-    return np.sum(jacobian_array, axis = 0)/num_measurements
-
-
-def onsager_matrix_singular(signal_noisy_current: float,
-                            tau: float,
-                            noise_cov_current_eigvals: float,
-                            noise_cov_current_eigvecs: float,
-                            noise_cov_current_nonzero_indices,
-                            noise_cov_current_nonzero_eigvals_inv: float,
-                            num_measurements: float):
     
-    jacobian_array = np.apply_along_axis(block_soft_thresholding_jacobian_singular, 1, signal_noisy_current, tau, noise_cov_current_eigvals, noise_cov_current_eigvecs, noise_cov_current_nonzero_indices, noise_cov_current_nonzero_eigvals_inv)
-    return np.sum(jacobian_array, axis = 0)/num_measurements
+    
+#     jacobian_array = np.apply_along_axis(block_soft_thresholding_jacobian_nonsingular, 1, signal_noisy_current, tau, noise_cov_current_inv)
+#     return np.sum(jacobian_array, axis = 0)/num_measurements
 
 
-def onsager_term_nonsingular(Residual_prev: float,
-                 signal_noisy_current: float,
-                 tau: float,
-                 noise_cov_current_inv: float):
+# def onsager_matrix_singular(signal_noisy_current: float,
+#                             tau: float,
+#                             noise_cov_current_eigvals: float,
+#                             noise_cov_current_eigvecs: float,
+#                             noise_cov_current_nonzero_indices,
+#                             noise_cov_current_nonzero_eigvals_inv: float,
+#                             num_measurements: float):
+    
+#     jacobian_array = np.apply_along_axis(block_soft_thresholding_jacobian_singular, 1, signal_noisy_current, tau, noise_cov_current_eigvals, noise_cov_current_eigvecs, noise_cov_current_nonzero_indices, noise_cov_current_nonzero_eigvals_inv)
+#     return np.sum(jacobian_array, axis = 0)/num_measurements
 
-    onsager_matrix_ = onsager_matrix_nonsingular(signal_noisy_current, tau, noise_cov_current_inv, Residual_prev.shape[0])
-    return np.matmul(Residual_prev, onsager_matrix_)
+
+# def onsager_term_nonsingular(Residual_prev: float,
+#                  signal_noisy_current: float,
+#                  tau: float,
+#                  noise_cov_current_inv: float):
+
+#     onsager_matrix_ = onsager_matrix_nonsingular(signal_noisy_current, tau, noise_cov_current_inv, Residual_prev.shape[0])
+#     return np.matmul(Residual_prev, onsager_matrix_)
 
 
-def onsager_term_singular(Residual_prev: float,
-                          signal_noisy_current: float,
-                            tau: float,
-                            noise_cov_current_eigvals: float,
-                            noise_cov_current_eigvecs: float,
-                            noise_cov_current_nonzero_indices,
-                            noise_cov_current_nonzero_eigvals_inv: float):
+# def onsager_term_singular(Residual_prev: float,
+#                           signal_noisy_current: float,
+#                             tau: float,
+#                             noise_cov_current_eigvals: float,
+#                             noise_cov_current_eigvecs: float,
+#                             noise_cov_current_nonzero_indices,
+#                             noise_cov_current_nonzero_eigvals_inv: float):
 
-    onsager_matrix_ = onsager_matrix_singular(signal_noisy_current, tau, noise_cov_current_eigvals, noise_cov_current_eigvecs, noise_cov_current_nonzero_indices, noise_cov_current_nonzero_eigvals_inv, Residual_prev.shape[0])
-    return np.matmul(Residual_prev, onsager_matrix_)
+#     onsager_matrix_ = onsager_matrix_singular(signal_noisy_current, tau, noise_cov_current_eigvals, noise_cov_current_eigvecs, noise_cov_current_nonzero_indices, noise_cov_current_nonzero_eigvals_inv, Residual_prev.shape[0])
+#     return np.matmul(Residual_prev, onsager_matrix_)
 
 
 def update_residual_nonsingular(A: float,
@@ -93,7 +94,7 @@ def update_residual_nonsingular(A: float,
                     noise_cov_current_inv: float):
     
     naive_residual = Y - np.matmul(A, signal_denoised_current)
-    onsager_term_ = onsager_term_nonsingular(Residual_prev, signal_noisy_current, tau, noise_cov_current_inv)
+    onsager_term_ = dd.block_soft_thresholding_onsager_nonsingular(signal_noisy_current, Residual_prev, tau, noise_cov_current_inv)
     return naive_residual + onsager_term_
 
 
@@ -103,13 +104,12 @@ def update_residual_singular(A: float,
                     signal_denoised_current: float,
                     Residual_prev: float,
                     tau: float,
-                    noise_cov_current_eigvals: float,
                     noise_cov_current_eigvecs: float,
                     noise_cov_current_nonzero_indices,
                     noise_cov_current_nonzero_eigvals_inv: float):
     
     naive_residual = Y - np.matmul(A, signal_denoised_current)
-    onsager_term_ = onsager_term_singular(Residual_prev, signal_noisy_current, tau, noise_cov_current_eigvals, noise_cov_current_eigvecs, noise_cov_current_nonzero_indices, noise_cov_current_nonzero_eigvals_inv)
+    onsager_term_ = dd.block_soft_thresholding_onsager_singular(signal_noisy_current, Residual_prev, tau, noise_cov_current_eigvecs, noise_cov_current_nonzero_indices, noise_cov_current_nonzero_eigvals_inv)
     return naive_residual + onsager_term_
 
 
@@ -133,15 +133,14 @@ def amp_iteration_singular(A: float,
                   signal_denoised_prev: float,
                   Residual_prev: float,
                   tau: float,
-                noise_cov_current_eigvals: float,
                 noise_cov_current_eigvecs: float,
                 noise_cov_current_nonzero_indices,
                 noise_cov_current_nonzero_eigvals_inv: float):
     
     signal_noisy_current = update_signal_noisy(A, signal_denoised_prev, Residual_prev)
     #noise_cov_current = Residual_prev.T @ Residual_prev/A.shape[0]
-    signal_denoised_current = update_signal_denoised_singular(signal_noisy_current, tau, noise_cov_current_eigvals, noise_cov_current_eigvecs, noise_cov_current_nonzero_indices, noise_cov_current_nonzero_eigvals_inv)
-    Residual_current = update_residual_singular(A, Y, signal_noisy_current, signal_denoised_current, Residual_prev, tau, noise_cov_current_eigvals, noise_cov_current_eigvecs, noise_cov_current_nonzero_indices, noise_cov_current_nonzero_eigvals_inv)
+    signal_denoised_current = update_signal_denoised_singular(signal_noisy_current, tau, noise_cov_current_eigvecs, noise_cov_current_nonzero_indices, noise_cov_current_nonzero_eigvals_inv)
+    Residual_current = update_residual_singular(A, Y, signal_noisy_current, signal_denoised_current, Residual_prev, tau, noise_cov_current_eigvecs, noise_cov_current_nonzero_indices, noise_cov_current_nonzero_eigvals_inv)
     return {'signal_denoised_current': signal_denoised_current,
             'Residual_current': Residual_current}
 
