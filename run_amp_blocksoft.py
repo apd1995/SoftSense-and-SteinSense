@@ -141,7 +141,7 @@ def run_amp_instance(**dict_params):
             D, U = np.linalg.eigh(noise_cov_current)
             nonzero_indices = (D>0)
             D_nonzero_inv = 1/D[nonzero_indices]
-            dict_current = amp.amp_iteration_singular(A, Y, signal_denoised_prev, Residual_prev, tau, D, U, nonzero_indices, D_nonzero_inv)
+            dict_current = amp.amp_iteration_singular(A, Y, signal_denoised_prev, Residual_prev, tau, U, nonzero_indices, D_nonzero_inv)
         
         signal_denoised_current = dict_current['signal_denoised_current']
         Residual_current = dict_current['Residual_current']
