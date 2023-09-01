@@ -70,9 +70,10 @@ def block_soft_thresholding_singular_vec(y, tau, Sigma_eigvecs, nonzero_indices,
     signal_newbasis_zero = y_indep_zero
     
     # combine the two to get signal_newbasis
-    signal_newbasis = np.zeros(len(y), dtype = float)
-    signal_newbasis[nonzero_indices] = signal_newbasis_indep
-    signal_newbasis[zero_indices] = signal_newbasis_zero
+    signal_newbasis = np.concatenate((signal_newbasis_zero, signal_newbasis_indep))
+    # signal_newbasis = np.zeros(len(y), dtype = float)
+    # signal_newbasis[nonzero_indices] = signal_newbasis_indep
+    # signal_newbasis[zero_indices] = signal_newbasis_zero
     
     # we have identified U.T @ signal, now we need to get signal i.e revert to original coordinates
     signal_originalbasis = np.matmul(Sigma_eigvecs, signal_newbasis)
