@@ -376,7 +376,7 @@ def run_amp_instance(**dict_params):
         D = np.round(D, 10)
         
         if np.all(D > 0):
-            noise_cov_current_inv = np.linalg.inv(noise_cov_current)
+            noise_cov_current_inv = np.matmul(U * 1.0/D, U.T)
             dict_current = amp_iteration_nonsingular(A, Y, signal_denoised_prev, Residual_prev, tau, noise_cov_current_inv)
         else:
             nonzero_indices = (D > 0)
