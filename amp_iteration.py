@@ -48,8 +48,8 @@ def update_signal_denoised_singular(signal_noisy_current: float,
     
     
     
-#     jacobian_array = np.apply_along_axis(block_soft_thresholding_jacobian_nonsingular, 1, signal_noisy_current, tau, noise_cov_current_inv)
-#     return np.sum(jacobian_array, axis = 0)/num_measurements
+#     jacobian_array = anp.apply_along_axis(block_soft_thresholding_jacobian_nonsingular, 1, signal_noisy_current, tau, noise_cov_current_inv)
+#     return anp.sum(jacobian_array, axis = 0)/num_measurements
 
 
 # def onsager_matrix_singular(signal_noisy_current: float,
@@ -60,8 +60,8 @@ def update_signal_denoised_singular(signal_noisy_current: float,
 #                             noise_cov_current_nonzero_eigvals_inv: float,
 #                             num_measurements: float):
     
-#     jacobian_array = np.apply_along_axis(block_soft_thresholding_jacobian_singular, 1, signal_noisy_current, tau, noise_cov_current_eigvals, noise_cov_current_eigvecs, noise_cov_current_nonzero_indices, noise_cov_current_nonzero_eigvals_inv)
-#     return np.sum(jacobian_array, axis = 0)/num_measurements
+#     jacobian_array = anp.apply_along_axis(block_soft_thresholding_jacobian_singular, 1, signal_noisy_current, tau, noise_cov_current_eigvals, noise_cov_current_eigvecs, noise_cov_current_nonzero_indices, noise_cov_current_nonzero_eigvals_inv)
+#     return anp.sum(jacobian_array, axis = 0)/num_measurements
 
 
 # def onsager_term_nonsingular(Residual_prev: float,
@@ -70,7 +70,7 @@ def update_signal_denoised_singular(signal_noisy_current: float,
 #                  noise_cov_current_inv: float):
 
 #     onsager_matrix_ = onsager_matrix_nonsingular(signal_noisy_current, tau, noise_cov_current_inv, Residual_prev.shape[0])
-#     return np.matmul(Residual_prev, onsager_matrix_)
+#     return anp.matmul(Residual_prev, onsager_matrix_)
 
 
 # def onsager_term_singular(Residual_prev: float,
@@ -82,7 +82,7 @@ def update_signal_denoised_singular(signal_noisy_current: float,
 #                             noise_cov_current_nonzero_eigvals_inv: float):
 
 #     onsager_matrix_ = onsager_matrix_singular(signal_noisy_current, tau, noise_cov_current_eigvals, noise_cov_current_eigvecs, noise_cov_current_nonzero_indices, noise_cov_current_nonzero_eigvals_inv, Residual_prev.shape[0])
-#     return np.matmul(Residual_prev, onsager_matrix_)
+#     return anp.matmul(Residual_prev, onsager_matrix_)
 
 
 def update_residual_nonsingular(A: float,
