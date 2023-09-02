@@ -204,12 +204,10 @@ def test_experiment() -> dict:
     return exp
 
 
-def do_coiled_experiment():
-    exp = test_experiment()
+def do_coiled_experiment(json_file: str):
+    exp = read_json(json_file)
     logging.info(f'{json.dumps(dask.config.config, indent=4)}')
-    software_environment = 'adonoho/matrix_recovery'
-    # logging.info('Deleting environment.')
-    # coiled.delete_software_environment(software_environment)
+    software_environment = 'adonoho/amp_matrix_recovery'
     logging.info('Creating environment.')
     coiled.create_software_environment(
         name=software_environment,
@@ -218,10 +216,10 @@ def do_coiled_experiment():
             "git+https://GIT_TOKEN@github.com/adonoho/EMS.git"
         ]
     )
-    with coiled.Cluster(software=software_environment, n_workers=10) as cluster:
+    with coiled.Cluster(software=software_environment, n_workers=80, worker_vm_types=['n1-standard-1'],
+                        use_best_zone=True, compute_purchase_option="spot_with_fallback") as cluster:
         with Client(cluster) as client:
             do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
-            # do_on_cluster(exp, block_bp_instance_df, client, project_id='coiled-data@hs-deep-lab-donoho.iam.gserviceaccount.com')
 
 
 def do_local_experiment():
@@ -234,11 +232,11 @@ def do_local_experiment():
 
 def read_and_do_local_experiment(json_file: str):
     exp = read_json(json_file)
-    with LocalCluster(dashboard_address='localhost:8787', n_workers=32, threads_per_worker=1) as cluster:
+    with LocalCluster(dashboard_address='localhost:8787', n_workers=12, threads_per_worker=1) as cluster:
     # with LocalCluster(dashboard_address='localhost:8787') as cluster:
         with Client(cluster) as client:
-            # do_on_cluster(exp, run_amp_instance, client, credentials=None)
-            do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
+            do_on_cluster(exp, run_amp_instance, client, credentials=None)
+            # do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
 
 
 def do_test_exp():
@@ -264,9 +262,9 @@ def count_params(json_file: str):
 
 if __name__ == '__main__':
     # do_local_experiment()
-    read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_blocksoft_09.json')
+    # read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_blocksoft_09.json')
     # count_params('updated_undersampling_int_grids.json')
-    # do_coiled_experiment()
+    do_coiled_experiment('exp_dicts/AMP_matrix_recovery_blocksoft_09.json')
     # do_test_exp()
     # do_test()
     # run_block_bp_experiment('block_bp_inputs.json')
