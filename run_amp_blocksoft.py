@@ -454,7 +454,7 @@ def do_coiled_experiment(json_file: str):
             "git+https://GIT_TOKEN@github.com/adonoho/EMS.git"
         ]
     )
-    with coiled.Cluster(software=software_environment, n_workers=80, worker_vm_types=['n1-standard-1'],
+    with coiled.Cluster(software=software_environment, n_workers=320, worker_vm_types=['n1-standard-1'],
                         use_best_zone=True, compute_purchase_option="spot_with_fallback") as cluster:
         with Client(cluster) as client:
             do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
