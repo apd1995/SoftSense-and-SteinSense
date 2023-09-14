@@ -312,6 +312,7 @@ def run_amp_instance(**dict_params):
                                sparsity_tol)
     rel_err = dict_observables['rel_err']
     min_rel_err = rel_err
+    noise_cov_current = np.matmul(Residual_current.T, Residual_current)/n
 
     
     while iter_count<max_iter and rel_err>100*err_tol and rel_err<err_explosion_tol and np.abs(np.linalg.det(noise_cov_current))>(1e-10)**B:
