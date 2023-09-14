@@ -1,5 +1,5 @@
 {
-    "table_name": "AMP_matrix_recovery_normal_bayes_2",
+    "table_name": "AMP_matrix_recovery_normal_bayes_3",
     "base_index": 0,
     "description": "Performs Bayes denoising with complete knowledge of sparsity and signal characteristics. Nonzeros of signal iid N(0,1). sparsity varies from 0.05 to 0.95 in increment of 0.05. Signal has 200 rows and 5 columns. Undersampling equispaced integers from 5 to 195 with difference 5. 10 MC runs per param point.",
     "db_url": "sqlite:///data/EMS.db3",
