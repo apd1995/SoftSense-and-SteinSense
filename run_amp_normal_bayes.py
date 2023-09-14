@@ -59,11 +59,11 @@ def normal_bayes_vec(y: np.ndarray,
 
     """
     nonzero_bayes = signal_mean_vec + anp.matmul(signal_cov, anp.matmul(anp.linalg.inv(signal_cov + noise_cov), y - signal_mean_vec))
-    if anp.linalg.det(noise_cov) != 0:
+    if anp.abs(anp.linalg.det(2*anp.pi*noise_cov)) <= 1e-50:
+        return nonzero_bayes
+    else:
         conditional_nonzero_prob = sparsity*multivariate_normal_pdf(y, mean = signal_mean_vec, cov = signal_cov + noise_cov)/(sparsity*multivariate_normal_pdf(y, mean = signal_mean_vec, cov = signal_cov + noise_cov) + (1-sparsity)*multivariate_normal_pdf(y, mean = anp.zeros_like(signal_mean_vec), cov = noise_cov))
         return conditional_nonzero_prob * nonzero_bayes
-    else:
-        return nonzero_bayes
     
 
 def normal_bayes(X: np.ndarray,
@@ -314,7 +314,7 @@ def run_amp_instance(**dict_params):
     min_rel_err = rel_err
 
     
-    while iter_count<max_iter and rel_err>100*err_tol and rel_err<err_explosion_tol:
+    while iter_count<max_iter and rel_err>100*err_tol and rel_err<err_explosion_tol and np.abs(np.linalg.det(noise_cov_current))>(1e-10)**B:
         
         iter_count = iter_count + 1
         
