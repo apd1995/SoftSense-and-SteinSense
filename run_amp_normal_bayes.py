@@ -28,7 +28,7 @@ from autograd import jacobian
 
 
 def multivariate_normal_pdf(y, mean, cov):
-    return anp.exp(-anp.matmul(y - mean, anp.matmul(anp.linalg.inv(cov), y - mean))/2)/anp.sqrt(anp.linalg.det(2*anp.pi*cov))
+    return anp.exp(-anp.matmul(y - mean, anp.matmul(anp.linalg.inv(cov), y - mean))/2)/(1e-10 + anp.sqrt(anp.linalg.det(2*anp.pi*cov)))
 
 
 def normal_bayes_vec(y: np.ndarray,
