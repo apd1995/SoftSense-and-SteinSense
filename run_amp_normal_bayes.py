@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Wed Sep 13 10:58:34 2023
+Created on Fri Sep 15 13:58:34 2023
 
 @author: apratimdey
 """
@@ -19,6 +19,7 @@ import coiled
 import logging
 import json
 
+
 logging.basicConfig(level=logging.INFO)
 log_gbq = logging.getLogger('pandas_gbq')
 log_gbq.setLevel(logging.DEBUG)
@@ -27,8 +28,39 @@ import autograd.numpy as anp
 from autograd import jacobian
 
 
-def multivariate_normal_pdf(y, mean, cov):
-    return anp.exp(-anp.matmul(y - mean, anp.matmul(anp.linalg.inv(cov), y - mean))/2)/(1e-10 + anp.sqrt(anp.linalg.det(2*anp.pi*cov)))
+def multivariate_normal_pdf(y: np.ndarray, mean: np.ndarray, cov: np.ndarray) -> float:
+    """
+    Returns the multivariate normal pdf at y, provided some checks are satisfied.
+    If condition number is large, returns 0.
+    If condition number is ok but somehow the quadratic form in gaussian exponent is positive, returns 0.
+
+    Parameters
+    ----------
+    y : np.ndarray
+        Array at which normal pdf is to be calculated.
+    mean : np.ndarray
+        Mean of normal distribution.
+    cov : np.ndarray
+        Covariance of normal distribution.
+    cov_condition : float
+        Condition number of covariance.
+
+    Returns
+    -------
+    float
+        DESCRIPTION.
+
+    """
+    cov_eigvals = np.linalg.eigh(cov)[0]
+    cov_condition = cov_eigvals[-1]/cov_eigvals[0]
+    if anp.abs(cov_condition) > 100:
+        return 0
+    else:
+        exponent = -anp.matmul(y - mean, anp.matmul(anp.linalg.inv(cov), y - mean))/2
+        if exponent > 0:
+            return 0
+        else:
+            return anp.exp(exponent)/anp.sqrt(anp.linalg.det(2*anp.pi*cov))
 
 
 def normal_bayes_vec(y: np.ndarray,
@@ -37,7 +69,7 @@ def normal_bayes_vec(y: np.ndarray,
                      noise_cov: np.ndarray,
                      sparsity: float) -> np.ndarray:
     """
-    Performs bayes denoising given noisy y = X + Z where X and Z are gaussian vectors.
+    Performs bayes denoising given noisy y = X + Z where X and Z are gaussian vectors with noise_cov non-singular.
 
     Parameters
     ----------
@@ -59,12 +91,9 @@ def normal_bayes_vec(y: np.ndarray,
 
     """
     nonzero_bayes = signal_mean_vec + anp.matmul(signal_cov, anp.matmul(anp.linalg.inv(signal_cov + noise_cov), y - signal_mean_vec))
-    if anp.abs(anp.linalg.det(2*anp.pi*noise_cov)) <= 1e-50:
-        return nonzero_bayes
-    else:
-        conditional_nonzero_prob = sparsity*multivariate_normal_pdf(y, mean = signal_mean_vec, cov = signal_cov + noise_cov)/(sparsity*multivariate_normal_pdf(y, mean = signal_mean_vec, cov = signal_cov + noise_cov) + (1-sparsity)*multivariate_normal_pdf(y, mean = anp.zeros_like(signal_mean_vec), cov = noise_cov))
-        return conditional_nonzero_prob * nonzero_bayes
-    
+    conditional_nonzero_prob = sparsity*multivariate_normal_pdf(y, mean = signal_mean_vec, cov = signal_cov + noise_cov)/(sparsity*multivariate_normal_pdf(y, mean = signal_mean_vec, cov = signal_cov + noise_cov) + (1-sparsity)*multivariate_normal_pdf(y, mean = anp.zeros_like(signal_mean_vec), cov = noise_cov))
+    return conditional_nonzero_prob * nonzero_bayes
+
 
 def normal_bayes(X: np.ndarray,
                  signal_mean_vec: np.ndarray,
@@ -72,7 +101,7 @@ def normal_bayes(X: np.ndarray,
                  noise_cov: np.ndarray,
                  sparsity: float) -> np.ndarray:
     """
-    Applies bayes denoiser to each row of signal matrix.
+    Applies bayes denoiser to each row of signal matrix when noise_cov is non-singular.
 
     Parameters
     ----------
@@ -83,7 +112,7 @@ def normal_bayes(X: np.ndarray,
     signal_cov : np.ndarray
         cov of signal rows.
     noise_cov : np.ndarray
-        cov of noise.
+        cov of noise. Needs to be nonsingular.
     sparsity : float
         sparsity level.
 
@@ -315,7 +344,7 @@ def run_amp_instance(**dict_params):
     noise_cov_current = np.matmul(Residual_current.T, Residual_current)/n
 
     
-    while iter_count<max_iter and rel_err>100*err_tol and rel_err<err_explosion_tol and np.abs(np.linalg.det(noise_cov_current))>(1e-10)**B:
+    while iter_count<max_iter and rel_err>err_tol and rel_err<err_explosion_tol:
         
         iter_count = iter_count + 1
         
@@ -349,15 +378,15 @@ def run_amp_instance(**dict_params):
 
 
 def test_experiment() -> dict:
-    exp = {'nonzero_rows': 30,
-           'num_measurements': 50,
-           'signal_nrow': 100,
+    exp = {'nonzero_rows': 80,
+           'num_measurements': 150,
+           'signal_nrow': 200,
            'signal_ncol': 5,
-           'max_iter': 50,
+           'max_iter': 500,
            'err_tol': 1e-5,
            'sparsity_tol': 1e-4,
-           'err_explosion_tol': 1e+5,
-           'mc': 0}
+           'err_explosion_tol': 100,
+           'mc': 9}
     # exp = dict(table_name='amp-integer-grids',
     #             base_index=0,
     #             db_url='sqlite:///data/EMS.db3',
