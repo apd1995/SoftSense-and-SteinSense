@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Fri Sep 15 13:58:34 2023
+Created on Wed Sep 13 10:58:34 2023
 
 @author: apratimdey
 """
@@ -52,7 +52,8 @@ def multivariate_normal_pdf(y: np.ndarray, mean: np.ndarray, cov: np.ndarray) ->
 
     """
     cov_eigvals = np.linalg.eigh(cov)[0]
-    cov_condition = cov_eigvals[-1]/cov_eigvals[0]
+    cov_eigvals_sorted = np.sort(np.abs(cov_eigvals))
+    cov_condition = cov_eigvals_sorted[-1]/cov_eigvals_sorted[0]
     if anp.abs(cov_condition) > 100:
         return 0
     else:
@@ -60,7 +61,13 @@ def multivariate_normal_pdf(y: np.ndarray, mean: np.ndarray, cov: np.ndarray) ->
         if exponent > 0:
             return 0
         else:
-            return anp.exp(exponent)/anp.sqrt(anp.linalg.det(2*anp.pi*cov))
+            if anp.linalg.det(2*anp.pi*cov) <= 0:
+                return 0
+            else:
+                if anp.sqrt(anp.linalg.det(2*anp.pi*cov)) == 0:
+                    return 0
+                else:
+                    return anp.exp(exponent)/anp.sqrt(anp.linalg.det(2*anp.pi*cov))
 
 
 def normal_bayes_vec(y: np.ndarray,
@@ -91,8 +98,13 @@ def normal_bayes_vec(y: np.ndarray,
 
     """
     nonzero_bayes = signal_mean_vec + anp.matmul(signal_cov, anp.matmul(anp.linalg.inv(signal_cov + noise_cov), y - signal_mean_vec))
-    conditional_nonzero_prob = sparsity*multivariate_normal_pdf(y, mean = signal_mean_vec, cov = signal_cov + noise_cov)/(sparsity*multivariate_normal_pdf(y, mean = signal_mean_vec, cov = signal_cov + noise_cov) + (1-sparsity)*multivariate_normal_pdf(y, mean = anp.zeros_like(signal_mean_vec), cov = noise_cov))
-    return conditional_nonzero_prob * nonzero_bayes
+    num = sparsity*multivariate_normal_pdf(y, mean = signal_mean_vec, cov = signal_cov + noise_cov)
+    deno = sparsity*multivariate_normal_pdf(y, mean = signal_mean_vec, cov = signal_cov + noise_cov) + (1-sparsity)*multivariate_normal_pdf(y, mean = anp.zeros_like(signal_mean_vec), cov = noise_cov)
+    if deno != 0:
+        conditional_nonzero_prob = num/deno
+        return conditional_nonzero_prob * nonzero_bayes
+    else:
+        return nonzero_bayes
 
 
 def normal_bayes(X: np.ndarray,
@@ -344,7 +356,7 @@ def run_amp_instance(**dict_params):
     noise_cov_current = np.matmul(Residual_current.T, Residual_current)/n
 
     
-    while iter_count<max_iter and rel_err>err_tol and rel_err<err_explosion_tol:
+    while iter_count<max_iter and rel_err>100*err_tol and rel_err<err_explosion_tol:
         
         iter_count = iter_count + 1
         
