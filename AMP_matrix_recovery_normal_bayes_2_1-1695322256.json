@@ -1,0 +1,806 @@
+{
+    "table_name": "AMP_matrix_recovery_normal_bayes_2_1",
+    "base_index": 0,
+    "description": "Performs Bayes denoising with complete knowledge of sparsity and signal characteristics. Nonzeros of signal iid N(0,1). Sparsity varies from 0.05 to 0.95 in increment of 0.05. Signal has 10000 rows and 5 columns. Undersampling integer grid consists of min, 25th, median, 75th percentiles and max of half-width 0.05 around the predicted PT value which is max Bayes risk. 10 MC runs per param point.",
+    "db_url": "sqlite:///data/EMS.db3",
+    "multi_res": [
+        {
+            "nonzero_rows": [
+                500
+            ],
+            "num_measurements": [
+                208,
+                458,
+                708,
+                958,
+                1208
+            ],
+            "signal_nrow": [
+                10000
+            ],
+            "signal_ncol": [
+                5
+            ],
+            "mc": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+            ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ]
+        },
+        {
+            "nonzero_rows": [
+                1000
+            ],
+            "num_measurements": [
+                761,
+                1011,
+                1261,
+                1511,
+                1761
+            ],
+            "signal_nrow": [
+                10000
+            ],
+            "signal_ncol": [
+                5
+            ],
+            "mc": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+            ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ]
+        },
+        {
+            "nonzero_rows": [
+                1500
+            ],
+            "num_measurements": [
+                1317,
+                1567,
+                1817,
+                2067,
+                2317
+            ],
+            "signal_nrow": [
+                10000
+            ],
+            "signal_ncol": [
+                5
+            ],
+            "mc": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+            ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ]
+        },
+        {
+            "nonzero_rows": [
+                2000
+            ],
+            "num_measurements": [
+                1820,
+                2070,
+                2320,
+                2570,
+                2820
+            ],
+            "signal_nrow": [
+                10000
+            ],
+            "signal_ncol": [
+                5
+            ],
+            "mc": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+            ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ]
+        },
+        {
+            "nonzero_rows": [
+                2500
+            ],
+            "num_measurements": [
+                2282,
+                2532,
+                2782,
+                3032,
+                3282
+            ],
+            "signal_nrow": [
+                10000
+            ],
+            "signal_ncol": [
+                5
+            ],
+            "mc": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+            ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ]
+        },
+        {
+            "nonzero_rows": [
+                3000
+            ],
+            "num_measurements": [
+                2757,
+                3007,
+                3257,
+                3507,
+                3757
+            ],
+            "signal_nrow": [
+                10000
+            ],
+            "signal_ncol": [
+                5
+            ],
+            "mc": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+            ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ]
+        },
+        {
+            "nonzero_rows": [
+                3500
+            ],
+            "num_measurements": [
+                3245,
+                3495,
+                3745,
+                3995,
+                4245
+            ],
+            "signal_nrow": [
+                10000
+            ],
+            "signal_ncol": [
+                5
+            ],
+            "mc": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+            ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ]
+        },
+        {
+            "nonzero_rows": [
+                4000
+            ],
+            "num_measurements": [
+                3727,
+                3977,
+                4227,
+                4477,
+                4727
+            ],
+            "signal_nrow": [
+                10000
+            ],
+            "signal_ncol": [
+                5
+            ],
+            "mc": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+            ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ]
+        },
+        {
+            "nonzero_rows": [
+                4500
+            ],
+            "num_measurements": [
+                4111,
+                4361,
+                4611,
+                4861,
+                5111
+            ],
+            "signal_nrow": [
+                10000
+            ],
+            "signal_ncol": [
+                5
+            ],
+            "mc": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+            ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ]
+        },
+        {
+            "nonzero_rows": [
+                5000
+            ],
+            "num_measurements": [
+                4613,
+                4863,
+                5113,
+                5363,
+                5613
+            ],
+            "signal_nrow": [
+                10000
+            ],
+            "signal_ncol": [
+                5
+            ],
+            "mc": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+            ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ]
+        },
+        {
+            "nonzero_rows": [
+                5500
+            ],
+            "num_measurements": [
+                5030,
+                5280,
+                5530,
+                5780,
+                6030
+            ],
+            "signal_nrow": [
+                10000
+            ],
+            "signal_ncol": [
+                5
+            ],
+            "mc": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+            ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ]
+        },
+        {
+            "nonzero_rows": [
+                6000
+            ],
+            "num_measurements": [
+                5532,
+                5782,
+                6032,
+                6282,
+                6532
+            ],
+            "signal_nrow": [
+                10000
+            ],
+            "signal_ncol": [
+                5
+            ],
+            "mc": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+            ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ]
+        },
+        {
+            "nonzero_rows": [
+                6500
+            ],
+            "num_measurements": [
+                6042,
+                6292,
+                6542,
+                6792,
+                7042
+            ],
+            "signal_nrow": [
+                10000
+            ],
+            "signal_ncol": [
+                5
+            ],
+            "mc": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+            ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ]
+        },
+        {
+            "nonzero_rows": [
+                7000
+            ],
+            "num_measurements": [
+                6468,
+                6718,
+                6968,
+                7218,
+                7468
+            ],
+            "signal_nrow": [
+                10000
+            ],
+            "signal_ncol": [
+                5
+            ],
+            "mc": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+            ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ]
+        },
+        {
+            "nonzero_rows": [
+                7500
+            ],
+            "num_measurements": [
+                6989,
+                7239,
+                7489,
+                7739,
+                7989
+            ],
+            "signal_nrow": [
+                10000
+            ],
+            "signal_ncol": [
+                5
+            ],
+            "mc": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+            ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ]
+        },
+        {
+            "nonzero_rows": [
+                8000
+            ],
+            "num_measurements": [
+                7291,
+                7541,
+                7791,
+                8041,
+                8291
+            ],
+            "signal_nrow": [
+                10000
+            ],
+            "signal_ncol": [
+                5
+            ],
+            "mc": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+            ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ]
+        },
+        {
+            "nonzero_rows": [
+                8500
+            ],
+            "num_measurements": [
+                8032,
+                8282,
+                8532,
+                8782,
+                9032
+            ],
+            "signal_nrow": [
+                10000
+            ],
+            "signal_ncol": [
+                5
+            ],
+            "mc": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+            ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ]
+        },
+        {
+            "nonzero_rows": [
+                9000
+            ],
+            "num_measurements": [
+                8459,
+                8709,
+                8959,
+                9209,
+                9459
+            ],
+            "signal_nrow": [
+                10000
+            ],
+            "signal_ncol": [
+                5
+            ],
+            "mc": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+            ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ]
+        },
+        {
+            "nonzero_rows": [
+                9500
+            ],
+            "num_measurements": [
+                8922,
+                9172,
+                9422,
+                9672,
+                9922
+            ],
+            "signal_nrow": [
+                10000
+            ],
+            "signal_ncol": [
+                5
+            ],
+            "mc": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+            ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ]
+        }
+    ]
+}
