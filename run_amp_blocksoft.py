@@ -369,7 +369,9 @@ def run_amp_instance(**dict_params):
         iter_count = iter_count + 1
         
         signal_denoised_prev = signal_denoised_current
+        signal_denoised_current = None
         Residual_prev = Residual_current
+        Residual_current = None
         noise_cov_current = np.matmul(Residual_prev.T, Residual_prev)/n
         
         D, U = np.linalg.eigh(noise_cov_current)
