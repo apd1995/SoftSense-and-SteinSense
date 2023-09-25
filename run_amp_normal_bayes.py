@@ -28,6 +28,17 @@ import autograd.numpy as anp
 from autograd import jacobian
 
 
+def seed(iter_count: int,
+         nonzero_rows: float,
+         num_measurements: float,
+         signal_nrow: float,
+         signal_ncol: float,
+         err_tol: float,
+         mc: float,
+         sparsity_tol: float) -> int:
+    return round(1 + round(iter_count*1000) + round(nonzero_rows * 1000) + round(num_measurements * 1000) + round(signal_nrow * 1000) + round(signal_ncol * 1000) + round(err_tol * 100000) + round(mc * 100000) + round(sparsity_tol * 1000000))
+
+
 def multivariate_normal_pdf(y: np.ndarray, mean: np.ndarray, cov: np.ndarray) -> float:
     """
     Returns the multivariate normal pdf at y, provided some checks are satisfied.
@@ -176,7 +187,9 @@ def normal_bayes_onsager(X: np.ndarray,
                         signal_mean_vec: np.ndarray,
                         signal_cov: np.ndarray,
                         noise_cov: np.ndarray,
-                        sparsity: float) -> np.ndarray:
+                        sparsity: float,
+                        rng: Generator,
+                        selected_rows_frac: float) -> np.ndarray:
     """
     Computes Onsager term.
 
@@ -202,9 +215,10 @@ def normal_bayes_onsager(X: np.ndarray,
 
     """
     X = X.astype(anp.float64)
-    jacobian_mat_list = [jacobian(normal_bayes_vec)(X[i,:], signal_mean_vec, signal_cov, noise_cov, sparsity) for i in range(X.shape[0])]
+    selected_rows = rng.choice(X.shape[0], int(selected_rows_frac*X.shape[0]), replace = False)
+    jacobian_mat_list = [jacobian(normal_bayes_vec)(X[i,:], signal_mean_vec, signal_cov, noise_cov, sparsity) for i in selected_rows]
     onsager_list = [anp.matmul(jacobian_mat, Z.T) for jacobian_mat in jacobian_mat_list]
-    return sum(onsager_list).T/Z.shape[0]
+    return sum(onsager_list).T/(Z.shape[0]*selected_rows_frac)
 
 
 def update_residual(A: np.ndarray,
@@ -215,14 +229,18 @@ def update_residual(A: np.ndarray,
                     signal_mean_vec: np.ndarray,
                     signal_cov: np.ndarray,
                     noise_cov_current: np.ndarray,
-                    sparsity: float) -> np.ndarray:
+                    sparsity: float,
+                    rng: Generator,
+                    selected_rows_frac: float) -> np.ndarray:
     naive_residual = Y - np.matmul(A, signal_denoised_current)
     onsager_term_ = normal_bayes_onsager(signal_noisy_current,
                                          Residual_prev,
                                          signal_mean_vec,
                                          signal_cov,
                                          noise_cov_current,
-                                         sparsity)
+                                         sparsity,
+                                         rng,
+                                         selected_rows_frac)
     return naive_residual + onsager_term_
 
 
@@ -233,7 +251,9 @@ def amp_iteration(A: np.ndarray,
                 signal_mean_vec: np.ndarray,
                 signal_cov: np.ndarray,
                 noise_cov_current: np.ndarray,
-                sparsity: float):
+                sparsity: float,
+                rng: Generator,
+                selected_rows_frac):
     signal_noisy_current = update_signal_noisy(A, signal_denoised_prev, Residual_prev)
     signal_denoised_current = update_signal_denoised(signal_noisy_current,
                                                      signal_mean_vec,
@@ -248,13 +268,11 @@ def amp_iteration(A: np.ndarray,
                                        signal_mean_vec,
                                        signal_cov,
                                        noise_cov_current,
-                                       sparsity)
+                                       sparsity,
+                                       rng,
+                                       selected_rows_frac)
     return {'signal_denoised_current': signal_denoised_current,
             'Residual_current': Residual_current}
-
-
-def seed(nonzero_rows: float, num_measurements: float, signal_nrow: float, signal_ncol: float, err_tol: float, mc: float, sparsity_tol: float) -> int:
-    return round(1 + round(nonzero_rows * 1000) + round(num_measurements * 1000) + round(signal_nrow * 1000) + round(signal_ncol * 1000) + round(err_tol * 100000) + round(mc * 100000) + round(sparsity_tol * 1000000))
 
 
 def gen_iid_normal_mtx(num_measurements, signal_nrow, rng):
@@ -319,8 +337,11 @@ def run_amp_instance(**dict_params):
     sparsity_tol = dict_params['sparsity_tol']
     max_iter = dict_params['max_iter']
     err_explosion_tol = dict_params['err_explosion_tol']
+    selected_rows_frac = dict_params['selected_rows_frac']
+        
+    iter_count = 0
     
-    rng = np.random.default_rng(seed=seed(k, n, N, B, err_tol, mc, sparsity_tol))
+    rng = np.random.default_rng(seed=seed(iter_count, k, n, N, B, err_tol, mc, sparsity_tol))
 
     signal_true = np.zeros((N, B), dtype=float)
     nonzero_indices = rng.choice(range(N), k, replace=False)
@@ -335,8 +356,6 @@ def run_amp_instance(**dict_params):
     dict_params['sparsity'] = sparsity
     dict_params['undersampling_ratio'] = n/N
     
-    iter_count = 0
-    
     tick = time.perf_counter()
     
     signal_denoised_current = np.zeros((N, B), dtype = float)
@@ -349,20 +368,16 @@ def run_amp_instance(**dict_params):
     # avg_err = dict_observables['avg_err']
     min_rel_err = rel_err
     noise_cov_current = np.matmul(Residual_current.T, Residual_current)/n
-    # rel_err_vec = [rel_err]
-    # avg_err_vec = [avg_err]
-
     
     while iter_count<max_iter and rel_err>100*err_tol and rel_err<err_explosion_tol:
         
         iter_count = iter_count + 1
         
+        rng = np.random.default_rng(seed=seed(iter_count, k, n, N, B, err_tol, mc, sparsity_tol))
+        
         signal_denoised_prev = signal_denoised_current
-        signal_denoised_current = None
         Residual_prev = Residual_current
-        Residual_current = None
         noise_cov_current = np.matmul(Residual_prev.T, Residual_prev)/n
-        dict_current = None
         dict_current = amp_iteration(A,
                                      Y, 
                                      signal_denoised_prev,
@@ -370,7 +385,9 @@ def run_amp_instance(**dict_params):
                                      signal_mean_vec,
                                      signal_cov,
                                      noise_cov_current,
-                                     sparsity)
+                                     sparsity,
+                                     rng,
+                                     selected_rows_frac)
 
         signal_denoised_current = dict_current['signal_denoised_current']
         Residual_current = dict_current['Residual_current']
@@ -380,10 +397,6 @@ def run_amp_instance(**dict_params):
                                    sparsity_tol)
         rel_err = dict_observables['rel_err']
         min_rel_err = min(rel_err, min_rel_err)
-        # rel_err_vec = rel_err_vec + [rel_err]
-        # avg_err = dict_observables['avg_err']
-        # avg_err_vec = avg_err_vec + [avg_err]
-        # print("rel err: " + str(rel_err) + ", det: " + str(np.linalg.det(noise_cov_current)))
 
     tock = time.perf_counter() - tick
     dict_observables['min_rel_err'] = min_rel_err
@@ -489,9 +502,9 @@ def count_params(json_file: str):
 
 if __name__ == '__main__':
     # do_local_experiment()
-    read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_normal_bayes_3_3.json')
+    read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_normal_bayes_approx_jacobian.json')
     # count_params('updated_undersampling_int_grids.json')
-    # do_coiled_experiment('exp_dicts/AMP_matrix_recovery_normal_bayes_3_3.json')
+    # do_coiled_experiment('exp_dicts/AMP_matrix_recovery_normal_bayes_approx_jacobian.json')
     # do_test_exp()
     # do_test()
     # run_block_bp_experiment('block_bp_inputs.json')
