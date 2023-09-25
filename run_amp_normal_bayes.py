@@ -443,7 +443,7 @@ def do_coiled_experiment(json_file: str):
         ]
     )
     with coiled.Cluster(software=software_environment,
-                        n_workers=960, worker_vm_types=['n1-standard-1'],
+                        n_workers=320, worker_vm_types=['n1-standard-1'],
                         use_best_zone=True, spot_policy='spot') as cluster:
         with Client(cluster) as client:
             do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
@@ -489,9 +489,9 @@ def count_params(json_file: str):
 
 if __name__ == '__main__':
     # do_local_experiment()
-    read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_normal_bayes_3_3.json')
+    # read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_normal_bayes_3_3.json')
     # count_params('updated_undersampling_int_grids.json')
-    # do_coiled_experiment('exp_dicts/AMP_matrix_recovery_normal_bayes_3_3.json')
+    do_coiled_experiment('exp_dicts/AMP_matrix_recovery_normal_bayes_3_3.json')
     # do_test_exp()
     # do_test()
     # run_block_bp_experiment('block_bp_inputs.json')
