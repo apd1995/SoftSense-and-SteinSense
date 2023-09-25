@@ -489,9 +489,9 @@ def count_params(json_file: str):
 
 if __name__ == '__main__':
     # do_local_experiment()
-    read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_normal_bayes_3_2.json')
+    read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_normal_bayes_3_3.json')
     # count_params('updated_undersampling_int_grids.json')
-    # do_coiled_experiment('exp_dicts/AMP_matrix_recovery_normal_bayes_3_2.json')
+    # do_coiled_experiment('exp_dicts/AMP_matrix_recovery_normal_bayes_3_3.json')
     # do_test_exp()
     # do_test()
     # run_block_bp_experiment('block_bp_inputs.json')
