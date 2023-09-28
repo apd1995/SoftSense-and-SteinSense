@@ -1,7 +1,7 @@
 {
     "table_name": "AMP_matrix_recovery_normal_bayes_approx_jacobian",
     "base_index": 0,
-    "description": "Performs Bayes denoising with complete knowledge of sparsity and signal characteristics. Nonzeros of signal iid N(0,1). Sparsity varies from 0.05 to 0.95 in increment of 0.05. Signal rows vary in [1600, 3200] and 5 columns. Undersampling integer grid half-width 0.05 around the predicted PT value which is max Bayes risk. Only min, quartiles and max of the interval are taken. 25 MC runs per param point. Jacobian approximated by selecting only 150 signal rows randomly.",
+    "description": "Performs Bayes denoising with complete knowledge of sparsity and signal characteristics. Nonzeros of signal iid N(0,1). Sparsity varies from 0.05 to 0.95 in increment of 0.05. Signal rows vary in [1600, 3200] and 5 columns. Undersampling integer grid half-width 0.1 around the predicted PT value which is max Bayes risk. Only min, quartiles and max of the interval are taken. 25 MC runs per param point. Jacobian approximated by selecting only 150 signal rows randomly.",
     "db_url": "sqlite:///data/EMS.db3",
     "multi_res": [
         {
