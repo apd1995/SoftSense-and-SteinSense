@@ -1,7 +1,7 @@
 {
     "table_name": "AMP_matrix_recovery_JS_approx_jacobian_normal",
     "base_index": 0,
-    "description": "Performs 25 mc runs around each integer point in 0.05 half-width interval around predicted PT with james stein denoiser. Sparsity varies in fraction from 0.05 to 0.95 in increments of 0.05. No. of rows varies in [100, 200, 400, 600, 800] and no. of columns is 5. Jacobian approximated by randomly selecting about min(150, signal_nrow) rows of the estimated signal.",
+    "description": "Performs 25 mc runs around each integer point in 0.05 half-width interval around predicted PT with james stein denoiser. Sparsity varies in fraction from 0.05 to 0.95 in increments of 0.05. No. of rows varies in [100, 200, 400, 600, 800, 1000] and no. of columns is 5. Jacobian approximated by randomly selecting about min(150, signal_nrow) rows of the estimated signal.",
     "db_url": "sqlite:///data/EMS.db3",
     "multi_res": [
         {
