@@ -437,8 +437,9 @@ def do_coiled_experiment(json_file: str):
             "git+https://GIT_TOKEN@github.com/adonoho/EMS.git"
         ]
     )
-    with coiled.Cluster(software=software_environment, n_workers=32, worker_vm_types=['n1-standard-1'],
-                        use_best_zone=True, compute_purchase_option="spot_with_fallback") as cluster:
+    with coiled.Cluster(software=software_environment,
+                        n_workers=960, worker_vm_types=['n1-standard-1'],
+                        use_best_zone=True, spot_policy='spot') as cluster:
         with Client(cluster) as client:
             do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
 
@@ -483,9 +484,9 @@ def count_params(json_file: str):
 
 if __name__ == '__main__':
     # do_local_experiment()
-    read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_JS_approx_jacobian_normal.json')
+    # read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_JS_approx_jacobian_normal.json')
     # count_params('updated_undersampling_int_grids.json')
-    # do_coiled_experiment('exp_dicts/AMP_matrix_recovery_JS_approx_jacobian_normal.json')
+    do_coiled_experiment('exp_dicts/AMP_matrix_recovery_JS_approx_jacobian_normal.json')
     # do_test_exp()
     # do_test()
     # run_block_bp_experiment('block_bp_inputs.json')
