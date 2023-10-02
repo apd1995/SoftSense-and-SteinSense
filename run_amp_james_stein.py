@@ -345,7 +345,8 @@ def run_amp_instance(**dict_params):
                                sparsity_tol)
     rel_err = dict_observables['rel_err']
     min_rel_err = rel_err
-    noise_cov_current = np.matmul(Residual_current.T, Residual_current)/n
+    # noise_cov_current = np.matmul(Residual_current.T, Residual_current)/n
+    noise_cov_current_cov = np.cov(Residual_current.T)
     
     while iter_count<max_iter and rel_err>100*err_tol and rel_err<err_explosion_tol:
         
@@ -357,9 +358,10 @@ def run_amp_instance(**dict_params):
         signal_denoised_current = None
         Residual_prev = Residual_current
         Residual_current = None
-        noise_cov_current = np.matmul(Residual_prev.T, Residual_prev)/n
+        # noise_cov_current = np.matmul(Residual_prev.T, Residual_prev)/n
+        noise_cov_current_cov = np.cov(Residual_prev.T)
         
-        D, U = np.linalg.eigh(noise_cov_current)
+        D, U = np.linalg.eigh(noise_cov_current_cov)
         D = np.round(D, 10)
         
         if np.all(D > 0):
@@ -437,9 +439,8 @@ def do_coiled_experiment(json_file: str):
             "git+https://GIT_TOKEN@github.com/adonoho/EMS.git"
         ]
     )
-    with coiled.Cluster(software=software_environment,
-                        n_workers=960, worker_vm_types=['n1-standard-1'],
-                        use_best_zone=True, spot_policy='spot') as cluster:
+    with coiled.Cluster(software=software_environment, n_workers=32, worker_vm_types=['n1-standard-1'],
+                        use_best_zone=True, compute_purchase_option="spot_with_fallback") as cluster:
         with Client(cluster) as client:
             do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
 
@@ -454,7 +455,7 @@ def do_local_experiment():
 
 def read_and_do_local_experiment(json_file: str):
     exp = read_json(json_file)
-    with LocalCluster(dashboard_address='localhost:8787', n_workers=32, threads_per_worker=1) as cluster:
+    with LocalCluster(dashboard_address='localhost:8787', n_workers=4, threads_per_worker=1) as cluster:
     # with LocalCluster(dashboard_address='localhost:8787') as cluster:
         with Client(cluster) as client:
             # do_on_cluster(exp, run_amp_instance, client, credentials=None)
