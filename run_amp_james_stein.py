@@ -360,9 +360,9 @@ def run_amp_instance(**dict_params):
         Residual_current = None
         # noise_cov_current = np.matmul(Residual_prev.T, Residual_prev)/n
         # noise_cov_current_cov = np.cov(Residual_prev.T)
-        noise_cov_current_var = np.mean(np.var(Residual_prev, axis = 0))*np.eye(B)
+        noise_cov_current_isotropic = np.mean(np.var(Residual_prev, axis = 0))*np.eye(B)
         
-        D, U = np.linalg.eigh(noise_cov_current_var)
+        D, U = np.linalg.eigh(noise_cov_current_isotropic)
         D = np.round(D, 10)
         
         if np.all(D > 0):
