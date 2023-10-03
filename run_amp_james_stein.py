@@ -346,7 +346,7 @@ def run_amp_instance(**dict_params):
     rel_err = dict_observables['rel_err']
     min_rel_err = rel_err
     # noise_cov_current = np.matmul(Residual_current.T, Residual_current)/n
-    noise_cov_current_cov = np.cov(Residual_current.T)
+    # noise_cov_current_cov = np.cov(Residual_current.T)
     
     while iter_count<max_iter and rel_err>100*err_tol and rel_err<err_explosion_tol:
         
@@ -359,9 +359,10 @@ def run_amp_instance(**dict_params):
         Residual_prev = Residual_current
         Residual_current = None
         # noise_cov_current = np.matmul(Residual_prev.T, Residual_prev)/n
-        noise_cov_current_cov = np.cov(Residual_prev.T)
+        # noise_cov_current_cov = np.cov(Residual_prev.T)
+        noise_cov_current_var = np.mean(np.var(Residual_prev, axis = 0))*np.eye(B)
         
-        D, U = np.linalg.eigh(noise_cov_current_cov)
+        D, U = np.linalg.eigh(noise_cov_current_var)
         D = np.round(D, 10)
         
         if np.all(D > 0):
@@ -485,9 +486,9 @@ def count_params(json_file: str):
 
 if __name__ == '__main__':
     # do_local_experiment()
-    read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_JS_approx_jacobian_normal_cov.json')
+    read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_JS_approx_jacobian_normal_isotropic.json')
     # count_params('updated_undersampling_int_grids.json')
-    # do_coiled_experiment('exp_dicts/AMP_matrix_recovery_JS_approx_jacobian_normal_cov.json')
+    # do_coiled_experiment('exp_dicts/AMP_matrix_recovery_JS_approx_jacobian_normal_isotropic.json')
     # do_test_exp()
     # do_test()
     # run_block_bp_experiment('block_bp_inputs.json')
