@@ -1,7 +1,7 @@
 {
     "table_name": "AMP_matrix_recovery_JS_approx_jacobian_cov",
     "base_index": 0,
-    "description": "Performs 50 mc runs at each of 100 randomly chosen undersampling integer points with james stein denoiser. Sparsity equals 0.3. No. of rows varies in [800] and no. of columns is 5. Approximate jacobian computed with 40 percent randomly chosen signal rows. cov(resid) used to estimate the noise covariance at each iteration instead of resid.T * resid/n.",
+    "description": "Performs 20 mc runs at integer undersampling point in the grid [sparsity*signal_nrow, signal_nrow] with james stein denoiser. Sparsity varies from 0.05 to 0.95 in interval of 0.05. No. of rows varies in [100, 150, 200, 250, 300, 350, 400] and no. of columns is 5. Full jacobian computed. cov(resid) used to estimate the noise covariance at each iteration instead of resid.T * resid/n.",
     "db_url": "sqlite:///data/EMS.db3",
     "multi_res": [
         {
