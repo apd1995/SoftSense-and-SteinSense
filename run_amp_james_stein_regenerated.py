@@ -261,8 +261,8 @@ def run_amp_instance(**dict_params):
 
         rng = np.random.default_rng(seed=seed(iter_count, k, n, N, B, err_tol, mc, sparsity_tol))
         A_prev = A
-        A_current = gen_iid_normal_mtx(n, N, rng)/np.sqrt(n)
-        Y_current = np.matmul(A_current, signal_true)
+        A = gen_iid_normal_mtx(n, N, rng)/np.sqrt(n)
+        Y = np.matmul(A, signal_true)
         
         signal_denoised_prev = signal_denoised_current
         signal_denoised_current = None
@@ -277,8 +277,8 @@ def run_amp_instance(**dict_params):
             noise_cov_current_inv = np.matmul(U * 1.0/D, U.T)
             signal_noisy_current = update_signal_noisy(A_prev, signal_denoised_prev, Residual_prev)
             signal_denoised_current = update_signal_denoised_nonsingular(signal_noisy_current, noise_cov_current_inv)
-            Residual_current = update_residual(A_current,
-                                            Y_current,
+            Residual_current = update_residual(A,
+                                            Y,
                                             signal_denoised_current)
         else:
             nonzero_indices = (D > 0)
@@ -287,8 +287,8 @@ def run_amp_instance(**dict_params):
             signal_denoised_current = update_signal_denoised_singular(signal_noisy_current, U,
                                                                       nonzero_indices,
                                                                       D_nonzero_inv)
-            Residual_current = update_residual(A_current,
-                                            Y_current,
+            Residual_current = update_residual(A,
+                                            Y,
                                             signal_denoised_current)
         
         dict_observables = recovery_stats(signal_true,
