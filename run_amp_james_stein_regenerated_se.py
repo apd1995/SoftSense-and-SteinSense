@@ -286,7 +286,7 @@ def run_amp_instance(**dict_params):
                                    sparsity_tol)
         rel_err = dict_observables['rel_err']
         min_rel_err = min(rel_err, min_rel_err)
-        print("rel_err")
+        # print("rel_err")
     
     tock = time.perf_counter() - tick
     dict_observables['min_rel_err'] = min_rel_err
