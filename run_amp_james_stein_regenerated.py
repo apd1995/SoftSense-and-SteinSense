@@ -345,7 +345,7 @@ def test_experiment() -> dict:
 
 def do_coiled_experiment(json_file: str):
     exp = read_json(json_file)
-    logging.info(f'{json.dumps(dask.config.config, indent=4)}')
+    # logging.info(f'{json.dumps(dask.config.config, indent=4)}')
     software_environment = 'adonoho/amp_matrix_recovery'
     # coiled.delete_software_environment(name=software_environment)
     logging.info('Creating environment.')
@@ -403,9 +403,9 @@ def count_params(json_file: str):
 
 if __name__ == '__main__':
     # do_local_experiment()
-    read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_JS_normal_cov_regenerated.json')
+    # read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_JS_normal_cov_regenerated.json')
     # count_params('updated_undersampling_int_grids.json')
-    # do_coiled_experiment('exp_dicts/AMP_matrix_recovery_JS_normal_cov_regenerated.json')
+    do_coiled_experiment('exp_dicts/AMP_matrix_recovery_JS_normal_cov_regenerated.json')
     # do_test_exp()
     # do_test()
     # run_block_bp_experiment('block_bp_inputs.json')
