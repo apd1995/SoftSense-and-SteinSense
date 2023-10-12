@@ -286,7 +286,6 @@ def run_amp_instance(**dict_params):
                                    sparsity_tol)
         rel_err = dict_observables['rel_err']
         min_rel_err = min(rel_err, min_rel_err)
-        print("rel_err")
     
     tock = time.perf_counter() - tick
     dict_observables['min_rel_err'] = min_rel_err
@@ -333,7 +332,6 @@ def test_experiment() -> dict:
     #                 'sparsity_tol': [1e-4]
     #             }])
     return exp
-dict_params = test_experiment()
 
 
 def do_coiled_experiment(json_file: str):
