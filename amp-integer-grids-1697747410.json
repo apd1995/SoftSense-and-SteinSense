@@ -1,0 +1,37 @@
+{
+    "table_name": "amp-integer-grids",
+    "params": [
+        {
+            "nonzero_rows": [
+                30
+            ],
+            "num_measurements": [
+                320
+            ],
+            "signal_nrow": [
+                1000
+            ],
+            "signal_ncol": [
+                5
+            ],
+            "max_iter": [
+                1
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ],
+            "mc": [
+                0
+            ],
+            "selected_rows_frac": [
+                1.0
+            ]
+        }
+    ]
+}

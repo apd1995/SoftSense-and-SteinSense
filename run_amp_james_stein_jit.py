@@ -161,23 +161,26 @@ def update_signal_denoised_singular(signal_noisy_current: float,
                                             noise_cov_current_nonzero_eigvals_inv)
 
 
-def james_stein_onsager_nonsingular(X, Z, Sigma_inv, rng, selected_rows_frac):
+@jax.jit
+def james_stein_onsager_nonsingular(X, Z, Sigma_inv, rng: Generator, selected_rows_frac):
     X = jnp.array(X)
     selected_rows = rng.choice(X.shape[0], int(selected_rows_frac*X.shape[0]), replace = False)
-    dd_jacobian = jax.jit(jax.jacfwd(james_stein_nonsingular_vec, argnums=0))
+    dd_jacobian = jax.jacfwd(james_stein_nonsingular_vec, argnums=0)
+    # dd_jacobian = jax.jit(jax.jacfwd(james_stein_nonsingular_vec, argnums=0))
     jacobian_mat_list = [dd_jacobian(X[i,:], Sigma_inv) for i in selected_rows]
     sum_jacobians = sum(jacobian_mat_list)
-    onsager_term = np.matmul(Z, sum_jacobians.T)
+    onsager_term = jnp.matmul(Z, sum_jacobians.T)
     return onsager_term / (Z.shape[0] * selected_rows_frac)
   
-
-def james_stein_onsager_singular(X, Z, Sigma_eigvecs, nonzero_indices_int, zero_indices_int, Sigma_nonzero_eigvals_inv, rng, selected_rows_frac):
+@jax.jit
+def james_stein_onsager_singular(X, Z, Sigma_eigvecs, nonzero_indices_int, zero_indices_int, Sigma_nonzero_eigvals_inv, rng: Generator, selected_rows_frac):
     X = jnp.array(X)
     selected_rows = rng.choice(X.shape[0], int(selected_rows_frac*X.shape[0]), replace = False)
-    dd_jacobian = jax.jit(jax.jacfwd(james_stein_singular_vec, argnums=0))
+    dd_jacobian = jax.jacfwd(james_stein_singular_vec, argnums=0)
+    # dd_jacobian = jax.jit(jax.jacfwd(james_stein_singular_vec, argnums=0))
     jacobian_mat_list = [dd_jacobian(X[i,:], Sigma_eigvecs, nonzero_indices_int, zero_indices_int, Sigma_nonzero_eigvals_inv) for i in selected_rows]
     sum_jacobians = sum(jacobian_mat_list)
-    onsager_term = np.matmul(Z, sum_jacobians.T)
+    onsager_term = jnp.matmul(Z, sum_jacobians.T)
     return onsager_term / (Z.shape[0] * selected_rows_frac)
    
 
@@ -194,14 +197,14 @@ def update_residual_singular(A: float,
                              rng,
                              selected_rows_frac):
     naive_residual = Y - np.matmul(A, signal_denoised_current)
-    onsager_term_ = james_stein_onsager_singular(signal_noisy_current,
-                                                 Residual_prev,
-                                                 noise_cov_current_eigvecs,
-                                                 noise_cov_current_nonzero_indices_int,
-                                                 noise_cov_current_zero_indices_int,
-                                                 noise_cov_current_nonzero_eigvals_inv,
-                                                 rng,
-                                                 selected_rows_frac)
+    onsager_term_ = jax.jit(james_stein_onsager_singular(signal_noisy_current,
+                                                         Residual_prev,
+                                                         noise_cov_current_eigvecs,
+                                                         noise_cov_current_nonzero_indices_int,
+                                                         noise_cov_current_zero_indices_int,
+                                                         noise_cov_current_nonzero_eigvals_inv,
+                                                         rng,
+                                                         selected_rows_frac))
     return naive_residual + onsager_term_
 
 
@@ -214,11 +217,11 @@ def update_residual_nonsingular(A: float,
                                 rng,
                                 selected_rows_frac):
     naive_residual = Y - np.matmul(A, signal_denoised_current)
-    onsager_term_ = james_stein_onsager_nonsingular(signal_noisy_current,
-                                                    Residual_prev,
-                                                    noise_cov_current_inv,
-                                                    rng,
-                                                    selected_rows_frac)
+    onsager_term_ = jax.jit(james_stein_onsager_nonsingular(signal_noisy_current,
+                                                            Residual_prev,
+                                                            noise_cov_current_inv,
+                                                            rng,
+                                                            selected_rows_frac))
     return naive_residual + onsager_term_
 
 
@@ -408,16 +411,20 @@ def run_amp_instance(**dict_params):
 
 
 def test_experiment() -> dict:
-    exp = {'nonzero_rows': 30,
-           'num_measurements': 320,
-           'signal_nrow': 1000,
-           'signal_ncol': 5,
-           'max_iter': 1,
-           'err_tol': 1e-5,
-           'sparsity_tol': 1e-4,
-           'err_explosion_tol': 100,
-           'mc': 0,
-           'selected_rows_frac': 1.0}
+    exp = {'table_name':'amp-integer-grids',
+           'params': [{
+               'nonzero_rows': [30],
+               'num_measurements': [320],
+               'signal_nrow': [1000],
+               'signal_ncol': [5],
+               'max_iter': [1],
+               'err_tol': [1e-5],
+               'sparsity_tol': [1e-4],
+               'err_explosion_tol': [100],
+               'mc': [0],
+               'selected_rows_frac': [1.0]
+                }]
+           }
     # exp = dict(table_name='amp-integer-grids',
     #             base_index=0,
     #             db_url='sqlite:///data/EMS.db3',
@@ -470,12 +477,13 @@ def do_local_experiment():
     logging.info(f'{json.dumps(dask.config.config, indent=4)}')
     with LocalCluster(dashboard_address='localhost:8787') as cluster:
         with Client(cluster) as client:
-            do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
+            do_on_cluster(exp, run_amp_instance, client, credentials=None)
+            # do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
 
 
 def read_and_do_local_experiment(json_file: str):
     exp = read_json(json_file)
-    with LocalCluster(dashboard_address='localhost:8787', n_workers=26) as cluster:
+    with LocalCluster(dashboard_address='localhost:8787', n_workers=16) as cluster:
     # with LocalCluster(dashboard_address='localhost:8787') as cluster:
         with Client(cluster) as client:
             # do_on_cluster(exp, run_amp_instance, client, credentials=None)
@@ -504,8 +512,8 @@ def count_params(json_file: str):
 
 
 if __name__ == '__main__':
-    # do_local_experiment()
-    read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_JS_approx_jacobian_normal_jax_delayed.json')
+    do_local_experiment()
+    # read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_JS_approx_jacobian_normal_jax_delayed.json')
     # count_params('updated_undersampling_int_grids.json')
     # do_coiled_experiment('exp_dicts/AMP_matrix_recovery_JS_approx_jacobian_normal_jax_delayed.json')
     # do_test_exp()
