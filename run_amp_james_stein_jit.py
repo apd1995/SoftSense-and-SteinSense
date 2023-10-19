@@ -38,6 +38,7 @@ def seed(iter_count: int,
     return round(1 + round(iter_count*1000) + round(nonzero_rows * 1000) + round(num_measurements * 1000) + round(signal_nrow * 1000) + round(signal_ncol * 1000) + round(err_tol * 100000) + round(mc * 100000) + round(sparsity_tol * 1000000))
 
 
+@jax.jit
 def james_stein_nonsingular_vec(y, Sigma_inv):
     d = len(y)
     quad_whitening = jnp.dot(y, jnp.dot(Sigma_inv, y))
@@ -68,6 +69,7 @@ def james_stein_nonsingular(X: np.ndarray, Sigma_inv: np.ndarray) -> np.ndarray:
     return X * james_stein_coeff[:, np.newaxis]
 
 
+@jax.jit
 def james_stein_diagonal_vec(y, diag_inv):
     d = len(y)
     quad_whitening = jnp.sum(diag_inv * y**2)
@@ -84,6 +86,7 @@ def james_stein_diagonal(X, diag_inv):
     return X * james_stein_coeff[:, np.newaxis]
 
 
+@jax.jit
 def james_stein_singular_vec(y, Sigma_eigvecs, nonzero_indices_int, zero_indices_int, Sigma_nonzero_eigvals_inv):
     # changing coordinates to get uncorrelated components
     y_indep = jnp.matmul(Sigma_eigvecs.T, y)
@@ -472,7 +475,7 @@ def do_local_experiment():
 
 def read_and_do_local_experiment(json_file: str):
     exp = read_json(json_file)
-    with LocalCluster(dashboard_address='localhost:8787') as cluster:
+    with LocalCluster(dashboard_address='localhost:8787', n_workers=26) as cluster:
     # with LocalCluster(dashboard_address='localhost:8787') as cluster:
         with Client(cluster) as client:
             # do_on_cluster(exp, run_amp_instance, client, credentials=None)
