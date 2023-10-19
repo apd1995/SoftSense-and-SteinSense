@@ -6,13 +6,6 @@ Created on Thu Oct 19 02:10:26 2023
 @author: apratimdey
 """
 
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Oct 17 15:21:52 2023
-
-@author: apratimdey
-"""
 import numpy as np
 from numpy.random import Generator
 import cvxpy as cvx
@@ -91,18 +84,18 @@ def james_stein_diagonal(X, diag_inv):
     return X * james_stein_coeff[:, np.newaxis]
 
 
-def james_stein_singular_vec(y, Sigma_eigvecs, nonzero_indices, Sigma_nonzero_eigvals_inv):
+def james_stein_singular_vec(y, Sigma_eigvecs, nonzero_indices_int, zero_indices_int, Sigma_nonzero_eigvals_inv):
     # changing coordinates to get uncorrelated components
     y_indep = jnp.matmul(Sigma_eigvecs.T, y)
     
-    y_indep_nonzero =  y_indep[nonzero_indices]
+    y_indep_nonzero =  y_indep[jnp.array(nonzero_indices_int)]
     
     # apply denoiser on these coordinates to estimate the signal in the new basis on indep coordinates
     signal_newbasis_indep = james_stein_diagonal_vec(y_indep_nonzero, Sigma_nonzero_eigvals_inv)
     
     # when D has a 0 entry, it means we have perfect precision
-    zero_indices = ~nonzero_indices
-    y_indep_zero = y_indep[zero_indices]
+    # zero_indices = ~nonzero_indices
+    y_indep_zero = y_indep[jnp.array(zero_indices_int)]
     signal_newbasis_zero = y_indep_zero
     
     # combine the two to get signal_newbasis
@@ -118,24 +111,24 @@ def james_stein_singular_vec(y, Sigma_eigvecs, nonzero_indices, Sigma_nonzero_ei
 
 
 
-def james_stein_singular(X, Sigma_eigvecs, nonzero_indices, Sigma_nonzero_eigvals_inv):
+def james_stein_singular(X, Sigma_eigvecs, nonzero_indices_int, zero_indices_int, Sigma_nonzero_eigvals_inv):
     # changing coordinates to get uncorrelated components
     X_indep = np.matmul(X, Sigma_eigvecs)
     
-    X_indep_nonzero =  X_indep[:, nonzero_indices]
+    X_indep_nonzero =  X_indep[:, nonzero_indices_int]
     
     # apply denoiser on these coordinates to estimate the signal in the new basis on indep coordinates
     signal_newbasis_indep = james_stein_diagonal(X_indep_nonzero, Sigma_nonzero_eigvals_inv)
     
     # when D has a 0 entry, it means we have perfect precision
-    zero_indices = ~nonzero_indices
-    X_indep_zero = X_indep[:, zero_indices]
+    # zero_indices = ~nonzero_indices
+    X_indep_zero = X_indep[:, zero_indices_int]
     signal_newbasis_zero = X_indep_zero
     
     # combine the two to get signal_newbasis
     signal_newbasis = np.zeros(X.shape, dtype = float)
-    signal_newbasis[:, nonzero_indices] = signal_newbasis_indep
-    signal_newbasis[:, zero_indices] = signal_newbasis_zero
+    signal_newbasis[:, nonzero_indices_int] = signal_newbasis_indep
+    signal_newbasis[:, zero_indices_int] = signal_newbasis_zero
     
     # we have identified U.T @ signal, now we need to get signal i.e revert to original coordinates
     signal_originalbasis = np.matmul(signal_newbasis, Sigma_eigvecs.T)
@@ -146,7 +139,7 @@ def james_stein_singular(X, Sigma_eigvecs, nonzero_indices, Sigma_nonzero_eigval
 def update_signal_noisy(A: float,
                         signal_denoised_prev: float,
                         Residual_prev: float):
-    return signal_denoised_prev + jnp.matmul(A.T, Residual_prev)
+    return signal_denoised_prev + np.matmul(A.T, Residual_prev)
 
 
 def update_signal_denoised_nonsingular(signal_noisy_current: float,
@@ -156,10 +149,13 @@ def update_signal_denoised_nonsingular(signal_noisy_current: float,
 
 def update_signal_denoised_singular(signal_noisy_current: float,
                                     noise_cov_current_eigvecs: float,
-                                    noise_cov_current_nonzero_indices,
+                                    noise_cov_current_nonzero_indices_int,
+                                    noise_cov_current_zero_indices_int,
                                     noise_cov_current_nonzero_eigvals_inv: float):
     return james_stein_singular(signal_noisy_current, noise_cov_current_eigvecs,
-                                            noise_cov_current_nonzero_indices, noise_cov_current_nonzero_eigvals_inv)
+                                            noise_cov_current_nonzero_indices_int,
+                                            noise_cov_current_zero_indices_int,
+                                            noise_cov_current_nonzero_eigvals_inv)
 
 
 def james_stein_onsager_nonsingular(X, Z, Sigma_inv, rng, selected_rows_frac):
@@ -172,11 +168,11 @@ def james_stein_onsager_nonsingular(X, Z, Sigma_inv, rng, selected_rows_frac):
     return onsager_term / (Z.shape[0] * selected_rows_frac)
   
 
-def james_stein_onsager_singular(X, Z, Sigma_eigvecs, nonzero_indices, Sigma_nonzero_eigvals_inv, rng, selected_rows_frac):
+def james_stein_onsager_singular(X, Z, Sigma_eigvecs, nonzero_indices_int, zero_indices_int, Sigma_nonzero_eigvals_inv, rng, selected_rows_frac):
     X = jnp.array(X)
     selected_rows = rng.choice(X.shape[0], int(selected_rows_frac*X.shape[0]), replace = False)
     dd_jacobian = jax.jit(jax.jacfwd(james_stein_singular_vec, argnums=0))
-    jacobian_mat_list = [dd_jacobian(X[i,:], Sigma_eigvecs, nonzero_indices, Sigma_nonzero_eigvals_inv) for i in selected_rows]
+    jacobian_mat_list = [dd_jacobian(X[i,:], Sigma_eigvecs, nonzero_indices_int, zero_indices_int, Sigma_nonzero_eigvals_inv) for i in selected_rows]
     sum_jacobians = sum(jacobian_mat_list)
     onsager_term = np.matmul(Z, sum_jacobians.T)
     return onsager_term / (Z.shape[0] * selected_rows_frac)
@@ -189,7 +185,8 @@ def update_residual_singular(A: float,
                              signal_denoised_current: float,
                              Residual_prev: float,
                              noise_cov_current_eigvecs: float,
-                             noise_cov_current_nonzero_indices,
+                             noise_cov_current_nonzero_indices_int,
+                             noise_cov_current_zero_indices_int,
                              noise_cov_current_nonzero_eigvals_inv: float,
                              rng,
                              selected_rows_frac):
@@ -197,7 +194,8 @@ def update_residual_singular(A: float,
     onsager_term_ = james_stein_onsager_singular(signal_noisy_current,
                                                  Residual_prev,
                                                  noise_cov_current_eigvecs,
-                                                 noise_cov_current_nonzero_indices,
+                                                 noise_cov_current_nonzero_indices_int,
+                                                 noise_cov_current_zero_indices_int,
                                                  noise_cov_current_nonzero_eigvals_inv,
                                                  rng,
                                                  selected_rows_frac)
@@ -248,17 +246,20 @@ def amp_iteration_singular(A: float,
                            signal_denoised_prev: float,
                            Residual_prev: float,
                            noise_cov_current_eigvecs: float,
-                           noise_cov_current_nonzero_indices,
+                           noise_cov_current_nonzero_indices_int,
+                           noise_cov_current_zero_indices_int,
                            noise_cov_current_nonzero_eigvals_inv: float,
                            rng,
                            selected_rows_frac):
     signal_noisy_current = update_signal_noisy(A, signal_denoised_prev, Residual_prev)
     # noise_cov_current = Residual_prev.T @ Residual_prev/A.shape[0]
     signal_denoised_current = update_signal_denoised_singular(signal_noisy_current, noise_cov_current_eigvecs,
-                                                              noise_cov_current_nonzero_indices,
+                                                              noise_cov_current_nonzero_indices_int,
+                                                              noise_cov_current_zero_indices_int,
                                                               noise_cov_current_nonzero_eigvals_inv)
     Residual_current = update_residual_singular(A, Y, signal_noisy_current, signal_denoised_current, Residual_prev,
-                                                noise_cov_current_eigvecs, noise_cov_current_nonzero_indices,
+                                                noise_cov_current_eigvecs, noise_cov_current_nonzero_indices_int,
+                                                noise_cov_current_zero_indices_int,
                                                 noise_cov_current_nonzero_eigvals_inv,
                                                 rng, selected_rows_frac)
     return {'signal_denoised_current': signal_denoised_current,
@@ -336,7 +337,7 @@ def run_amp_instance(**dict_params):
     signal_true = np.zeros((N, B), dtype=float)
     nonzero_indices = rng.choice(range(N), k, replace=False)
     signal_true[nonzero_indices, :] = rng.normal(0, 1, (k, B))
-    signal_true = jnp.array(signal_true)
+    signal_true = np.array(signal_true)
    
     A = gen_iid_normal_mtx(n, N, rng)/np.sqrt(n)
     Y = np.matmul(A, signal_true)
@@ -347,7 +348,7 @@ def run_amp_instance(**dict_params):
     
     tick = time.perf_counter()
     
-    signal_denoised_current = jnp.zeros((N, B), dtype = float)
+    signal_denoised_current = np.zeros((N, B), dtype = float)
     Residual_current = Y
     
     dict_observables = recovery_stats(signal_true,
@@ -380,8 +381,10 @@ def run_amp_instance(**dict_params):
             dict_current = amp_iteration_nonsingular(A, Y, signal_denoised_prev, Residual_prev, noise_cov_current_inv, rng, selected_rows_frac)
         else:
             nonzero_indices = (D > 0)
-            D_nonzero_inv = 1/D[nonzero_indices]
-            dict_current = amp_iteration_singular(A, Y, signal_denoised_prev, Residual_prev, U, nonzero_indices, D_nonzero_inv, rng, selected_rows_frac)
+            nonzero_indices_int = np.where(nonzero_indices)[0]
+            zero_indices_int = np.where(~nonzero_indices)[0]
+            D_nonzero_inv = 1/D[nonzero_indices_int]
+            dict_current = amp_iteration_singular(A, Y, signal_denoised_prev, Residual_prev, U, nonzero_indices_int, zero_indices_int, D_nonzero_inv, rng, selected_rows_frac)
         
         signal_denoised_current = dict_current['signal_denoised_current']
         Residual_current = dict_current['Residual_current']
