@@ -355,7 +355,6 @@ def run_amp_instance(**dict_params):
                                sparsity_tol)
     rel_err = dict_observables['rel_err']
     min_rel_err = rel_err
-    timer = 0
     # noise_cov_current = np.matmul(Residual_current.T, Residual_current)/n
     # noise_cov_current_cov = np.cov(Residual_current.T)
     
@@ -376,7 +375,6 @@ def run_amp_instance(**dict_params):
         D, U = np.linalg.eigh(noise_cov_current)
         D = np.round(D, 10)
         
-        start_time = time.time()
         if np.all(D > 0):
             noise_cov_current_inv = np.matmul(U * 1.0/D, U.T)
             dict_current = amp_iteration_nonsingular(A, Y, signal_denoised_prev, Residual_prev, noise_cov_current_inv, rng, selected_rows_frac)
@@ -384,7 +382,6 @@ def run_amp_instance(**dict_params):
             nonzero_indices = (D > 0)
             D_nonzero_inv = 1/D[nonzero_indices]
             dict_current = amp_iteration_singular(A, Y, signal_denoised_prev, Residual_prev, U, nonzero_indices, D_nonzero_inv, rng, selected_rows_frac)
-        end_time = time.time()
         
         signal_denoised_current = dict_current['signal_denoised_current']
         Residual_current = dict_current['Residual_current']
@@ -394,8 +391,6 @@ def run_amp_instance(**dict_params):
                                    sparsity_tol)
         rel_err = dict_observables['rel_err']
         min_rel_err = min(rel_err, min_rel_err)
-        timer = timer + round(end_time - start_time, 2)
-        print("time: " + str(timer/iter_count))
     
     tock = time.perf_counter() - tick
     dict_observables['min_rel_err'] = min_rel_err
@@ -442,7 +437,6 @@ def test_experiment() -> dict:
     #                 'sparsity_tol': [1e-4]
     #             }])
     return exp
-dict_params = test_experiment()
 
 
 def do_coiled_experiment(json_file: str):
