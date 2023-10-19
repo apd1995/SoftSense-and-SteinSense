@@ -162,9 +162,8 @@ def update_signal_denoised_singular(signal_noisy_current: float,
 
 
 @jax.jit
-def james_stein_onsager_nonsingular(X, Z, Sigma_inv, rng: Generator, selected_rows_frac):
+def james_stein_onsager_nonsingular(X, Z, Sigma_inv, selected_rows, selected_rows_frac):
     X = jnp.array(X)
-    selected_rows = rng.choice(X.shape[0], int(selected_rows_frac*X.shape[0]), replace = False)
     dd_jacobian = jax.jacfwd(james_stein_nonsingular_vec, argnums=0)
     # dd_jacobian = jax.jit(jax.jacfwd(james_stein_nonsingular_vec, argnums=0))
     jacobian_mat_list = [dd_jacobian(X[i,:], Sigma_inv) for i in selected_rows]
@@ -173,9 +172,9 @@ def james_stein_onsager_nonsingular(X, Z, Sigma_inv, rng: Generator, selected_ro
     return onsager_term / (Z.shape[0] * selected_rows_frac)
   
 @jax.jit
-def james_stein_onsager_singular(X, Z, Sigma_eigvecs, nonzero_indices_int, zero_indices_int, Sigma_nonzero_eigvals_inv, rng: Generator, selected_rows_frac):
+def james_stein_onsager_singular(X, Z, Sigma_eigvecs, nonzero_indices_int, zero_indices_int, Sigma_nonzero_eigvals_inv, selected_rows, selected_rows_frac):
     X = jnp.array(X)
-    selected_rows = rng.choice(X.shape[0], int(selected_rows_frac*X.shape[0]), replace = False)
+    # selected_rows = rng.choice(X.shape[0], int(selected_rows_frac*X.shape[0]), replace = False)
     dd_jacobian = jax.jacfwd(james_stein_singular_vec, argnums=0)
     # dd_jacobian = jax.jit(jax.jacfwd(james_stein_singular_vec, argnums=0))
     jacobian_mat_list = [dd_jacobian(X[i,:], Sigma_eigvecs, nonzero_indices_int, zero_indices_int, Sigma_nonzero_eigvals_inv) for i in selected_rows]
@@ -194,7 +193,7 @@ def update_residual_singular(A: float,
                              noise_cov_current_nonzero_indices_int,
                              noise_cov_current_zero_indices_int,
                              noise_cov_current_nonzero_eigvals_inv: float,
-                             rng,
+                             selected_rows,
                              selected_rows_frac):
     naive_residual = Y - np.matmul(A, signal_denoised_current)
     onsager_term_ = jax.jit(james_stein_onsager_singular(signal_noisy_current,
@@ -203,7 +202,7 @@ def update_residual_singular(A: float,
                                                          noise_cov_current_nonzero_indices_int,
                                                          noise_cov_current_zero_indices_int,
                                                          noise_cov_current_nonzero_eigvals_inv,
-                                                         rng,
+                                                         selected_rows,
                                                          selected_rows_frac))
     return naive_residual + onsager_term_
 
@@ -214,13 +213,13 @@ def update_residual_nonsingular(A: float,
                                 signal_denoised_current: float,
                                 Residual_prev: float,
                                 noise_cov_current_inv: float,
-                                rng,
+                                selected_rows,
                                 selected_rows_frac):
     naive_residual = Y - np.matmul(A, signal_denoised_current)
     onsager_term_ = jax.jit(james_stein_onsager_nonsingular(signal_noisy_current,
                                                             Residual_prev,
                                                             noise_cov_current_inv,
-                                                            rng,
+                                                            selected_rows,
                                                             selected_rows_frac))
     return naive_residual + onsager_term_
 
@@ -230,7 +229,7 @@ def amp_iteration_nonsingular(A: float,
                               signal_denoised_prev: float,
                               Residual_prev: float,
                               noise_cov_current_inv: float,
-                              rng,
+                              selected_rows,
                               selected_rows_frac):
     signal_noisy_current = update_signal_noisy(A, signal_denoised_prev, Residual_prev)
     # noise_cov_current = Residual_prev.T @ Residual_prev/A.shape[0]
@@ -241,7 +240,7 @@ def amp_iteration_nonsingular(A: float,
                                                    signal_denoised_current,
                                                    Residual_prev,
                                                    noise_cov_current_inv,
-                                                   rng,
+                                                   selected_rows,
                                                    selected_rows_frac)
     return {'signal_denoised_current': signal_denoised_current,
             'Residual_current': Residual_current}
@@ -255,7 +254,7 @@ def amp_iteration_singular(A: float,
                            noise_cov_current_nonzero_indices_int,
                            noise_cov_current_zero_indices_int,
                            noise_cov_current_nonzero_eigvals_inv: float,
-                           rng,
+                           selected_rows,
                            selected_rows_frac):
     signal_noisy_current = update_signal_noisy(A, signal_denoised_prev, Residual_prev)
     # noise_cov_current = Residual_prev.T @ Residual_prev/A.shape[0]
@@ -267,7 +266,7 @@ def amp_iteration_singular(A: float,
                                                 noise_cov_current_eigvecs, noise_cov_current_nonzero_indices_int,
                                                 noise_cov_current_zero_indices_int,
                                                 noise_cov_current_nonzero_eigvals_inv,
-                                                rng, selected_rows_frac)
+                                                selected_rows, selected_rows_frac)
     return {'signal_denoised_current': signal_denoised_current,
             'Residual_current': Residual_current}
 
@@ -339,7 +338,6 @@ def run_amp_instance(**dict_params):
     iter_count = 0
     
     rng = np.random.default_rng(seed=seed(iter_count, k, n, N, B, err_tol, mc, sparsity_tol))
-
     signal_true = np.zeros((N, B), dtype=float)
     nonzero_indices = rng.choice(range(N), k, replace=False)
     signal_true[nonzero_indices, :] = rng.normal(0, 1, (k, B))
@@ -370,7 +368,7 @@ def run_amp_instance(**dict_params):
         iter_count = iter_count + 1
 
         rng = np.random.default_rng(seed=seed(iter_count, k, n, N, B, err_tol, mc, sparsity_tol))
-        
+
         signal_denoised_prev = signal_denoised_current
         signal_denoised_current = None
         Residual_prev = Residual_current
@@ -378,19 +376,20 @@ def run_amp_instance(**dict_params):
         # noise_cov_current = np.matmul(Residual_prev.T, Residual_prev)/n
         noise_cov_current = np.cov(Residual_prev.T)
         # noise_cov_current_diag = np.diag(np.var(Residual_prev, axis = 0))
+        selected_rows = rng.choice(N, int(selected_rows_frac*N), replace = False)
         
         D, U = np.linalg.eigh(noise_cov_current)
         D = np.round(D, 10)
         
         if np.all(D > 0):
             noise_cov_current_inv = np.matmul(U * 1.0/D, U.T)
-            dict_current = amp_iteration_nonsingular(A, Y, signal_denoised_prev, Residual_prev, noise_cov_current_inv, rng, selected_rows_frac)
+            dict_current = amp_iteration_nonsingular(A, Y, signal_denoised_prev, Residual_prev, noise_cov_current_inv, selected_rows, selected_rows_frac)
         else:
             nonzero_indices = (D > 0)
             nonzero_indices_int = np.where(nonzero_indices)[0]
             zero_indices_int = np.where(~nonzero_indices)[0]
             D_nonzero_inv = 1/D[nonzero_indices_int]
-            dict_current = amp_iteration_singular(A, Y, signal_denoised_prev, Residual_prev, U, nonzero_indices_int, zero_indices_int, D_nonzero_inv, rng, selected_rows_frac)
+            dict_current = amp_iteration_singular(A, Y, signal_denoised_prev, Residual_prev, U, nonzero_indices_int, zero_indices_int, D_nonzero_inv, selected_rows, selected_rows_frac)
         
         signal_denoised_current = dict_current['signal_denoised_current']
         Residual_current = dict_current['Residual_current']
@@ -411,7 +410,7 @@ def run_amp_instance(**dict_params):
 
 
 def test_experiment() -> dict:
-    exp = {'table_name':'amp-integer-grids',
+    exp = {'table_name':'amp-test',
            'params': [{
                'nonzero_rows': [30],
                'num_measurements': [320],
@@ -512,8 +511,8 @@ def count_params(json_file: str):
 
 
 if __name__ == '__main__':
-    do_local_experiment()
-    # read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_JS_approx_jacobian_normal_jax_delayed.json')
+    # do_local_experiment()
+    read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_JS_approx_jacobian_normal_jax_delayed.json')
     # count_params('updated_undersampling_int_grids.json')
     # do_coiled_experiment('exp_dicts/AMP_matrix_recovery_JS_approx_jacobian_normal_jax_delayed.json')
     # do_test_exp()
