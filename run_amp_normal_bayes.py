@@ -502,7 +502,7 @@ def count_params(json_file: str):
 
 if __name__ == '__main__':
     # do_local_experiment()
-    # read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_normal_bayes_approx_jacobian_2.json')
+    read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_normal_bayes_approx_jacobian_2.json')
     # count_params('updated_undersampling_int_grids.json')
     do_coiled_experiment('exp_dicts/AMP_matrix_recovery_normal_bayes_approx_jacobian_2.json')
     # do_test_exp()

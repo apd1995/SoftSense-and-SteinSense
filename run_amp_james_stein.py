@@ -161,7 +161,8 @@ def update_signal_denoised_singular(signal_noisy_current: float,
 def james_stein_onsager_nonsingular(X, Z, Sigma_inv, rng, selected_rows_frac):
     X = X.astype(anp.float64)
     selected_rows = rng.choice(X.shape[0], int(selected_rows_frac*X.shape[0]), replace = False)
-    jacobian_mat_list = [jacobian(james_stein_nonsingular_vec)(X[i,:], Sigma_inv) for i in selected_rows]
+    dd_jacobian = dask.delayed(jacobian)
+    jacobian_mat_list = [dd_jacobian(james_stein_nonsingular_vec)(X[i,:], Sigma_inv) for i in selected_rows]
     onsager_list = [anp.matmul(jacobian_mat, Z.T) for jacobian_mat in jacobian_mat_list]
     return sum(onsager_list).T/(Z.shape[0]*selected_rows_frac)
         
