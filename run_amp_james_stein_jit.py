@@ -472,12 +472,13 @@ def run_amp_instance(**dict_params):
                                    sparsity_tol)
         rel_err = dict_observables['rel_err']
         min_rel_err = min(rel_err, min_rel_err)
-    
+
     tock = time.perf_counter() - tick
+    end_time_iteration_2_onwards = time.perf_counter()
     dict_observables['min_rel_err'] = min_rel_err
     dict_observables['iter_count'] = iter_count
     dict_observables['time_iteration_1'] = end_time_iteration_1 - start_time_iteration_1
-    dict_observables['time_iteration_2_onwards'] = round(tock - start_time_iteration_2_onwards, 2)
+    dict_observables['time_iteration_2_onwards'] = round(end_time_iteration_2_onwards - start_time_iteration_2_onwards, 2)
     dict_observables['time_seconds'] = round(tock, 2)
 
     #return DataFrame(data = {**dict_params, **dict_observables}).set_index('iter_count')
