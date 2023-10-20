@@ -556,8 +556,8 @@ def do_local_experiment():
     logging.info(f'{json.dumps(dask.config.config, indent=4)}')
     with LocalCluster(dashboard_address='localhost:8787') as cluster:
         with Client(cluster) as client:
-            do_on_cluster(exp, run_amp_instance, client, credentials=None)
-            # do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
+            # do_on_cluster(exp, run_amp_instance, client, credentials=None)
+            do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
 
 
 def read_and_do_local_experiment(json_file: str):
@@ -591,8 +591,8 @@ def count_params(json_file: str):
 
 
 if __name__ == '__main__':
-    do_local_experiment()
-    # read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_JS_approx_jacobian_normal_jax_delayed.json')
+    # do_local_experiment()
+    read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_JS_approx_jacobian_normal_jax_delayed.json')
     # count_params('updated_undersampling_int_grids.json')
     # do_coiled_experiment('exp_dicts/AMP_matrix_recovery_JS_approx_jacobian_normal_jax_delayed.json')
     # do_test_exp()
