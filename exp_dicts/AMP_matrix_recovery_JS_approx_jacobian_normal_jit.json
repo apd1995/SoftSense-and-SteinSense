@@ -1,5 +1,5 @@
 {
-    "table_name": "AMP_matrix_recovery_JS_approx_jacobian_normal_jit",
+    "table_name": "AMP_matrix_recovery_JS_approx_jacobian_normal_jit_3",
     "base_index": 0,
     "description": "Performs 50 mc runs at integer undersampling point in the grid of width 0.15 above predicted undersampling point, with james stein denoiser. Sparsity varies from 0.05 to 0.95 in interval of 0.05. No. of rows varies in [4000] and no. of columns is 5. Measurement matrix and observation regenerated at every iteration. cov(resid) used to estimate the noise covariance at each iteration instead of resid.T * resid/n.",
     "db_url": "sqlite:///data/EMS.db3",
