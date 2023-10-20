@@ -25,6 +25,7 @@ log_gbq.setLevel(logging.DEBUG)
 log_gbq.addHandler(logging.StreamHandler())
 import jax
 import jax.numpy as jnp
+from jax import ShapeDtypeStruct
 
 
 def seed(iter_count: int,
@@ -39,7 +40,9 @@ def seed(iter_count: int,
 
 
 @jax.jit
-def james_stein_nonsingular_vec(y, Sigma_inv):
+@jax.named_call
+def james_stein_nonsingular_vec(y:ShapeDtypeStruct(shape=('b',), dtype = float),
+                                Sigma_inv:ShapeDtypeStruct(shape=('b','b'), dtype = float)):
     d = len(y)
     quad_whitening = jnp.dot(y, jnp.dot(Sigma_inv, y))
     return jax.lax.cond(quad_whitening > (d-2),
@@ -70,7 +73,9 @@ def james_stein_nonsingular(X: np.ndarray, Sigma_inv: np.ndarray) -> np.ndarray:
 
 
 @jax.jit
-def james_stein_diagonal_vec(y, diag_inv):
+@jax.named_call
+def james_stein_diagonal_vec(y:ShapeDtypeStruct(shape=('foo4',), dtype = float),
+                             diag_inv:ShapeDtypeStruct(shape=('foo4',), dtype = float)):
     d = len(y)
     quad_whitening = jnp.sum(diag_inv * y**2)
     return jax.lax.cond(quad_whitening > (d-2),
@@ -87,7 +92,13 @@ def james_stein_diagonal(X, diag_inv):
 
 
 @jax.jit
-def james_stein_singular_vec(y, Sigma_eigvecs, nonzero_indices_int, zero_indices_int, Sigma_nonzero_eigvals_inv):
+@jax.named_call
+def james_stein_singular_vec(y:ShapeDtypeStruct(shape=('b',), dtype = float),
+                             Sigma_eigvecs:ShapeDtypeStruct(shape=('b','b'), dtype = float),
+                             nonzero_indices_int:ShapeDtypeStruct(shape=('foo1',), dtype = int),
+                             zero_indices_int:ShapeDtypeStruct(shape=('foo2',), dtype = int),
+                             Sigma_nonzero_eigvals_inv:ShapeDtypeStruct(shape=('foo1',), dtype = float)):
+    
     # changing coordinates to get uncorrelated components
     y_indep = jnp.matmul(Sigma_eigvecs.T, y)
     
@@ -162,7 +173,12 @@ def update_signal_denoised_singular(signal_noisy_current: float,
 
 
 @jax.jit
-def james_stein_onsager_nonsingular(X, Z, Sigma_inv, selected_rows, selected_rows_frac):
+@jax.named_call
+def james_stein_onsager_nonsingular(X:ShapeDtypeStruct(shape=('n','b'), dtype = float),
+                                    Z:ShapeDtypeStruct(shape=('m','b'), dtype = float),
+                                    Sigma_inv:ShapeDtypeStruct(shape=('b','b'), dtype = float),
+                                    selected_rows:ShapeDtypeStruct(shape=('foo3',), dtype = int),
+                                    selected_rows_frac):
     X = jnp.array(X)
     dd_jacobian = jax.jacfwd(james_stein_nonsingular_vec, argnums=0)
     # dd_jacobian = jax.jit(jax.jacfwd(james_stein_nonsingular_vec, argnums=0))
@@ -171,8 +187,17 @@ def james_stein_onsager_nonsingular(X, Z, Sigma_inv, selected_rows, selected_row
     onsager_term = jnp.matmul(Z, sum_jacobians.T)
     return onsager_term / (Z.shape[0] * selected_rows_frac)
   
+    
 @jax.jit
-def james_stein_onsager_singular(X, Z, Sigma_eigvecs, nonzero_indices_int, zero_indices_int, Sigma_nonzero_eigvals_inv, selected_rows, selected_rows_frac):
+@jax.named_call
+def james_stein_onsager_singular(X:ShapeDtypeStruct(shape=('n','b'), dtype = float),
+                                 Z:ShapeDtypeStruct(shape=('m','b'), dtype = float),
+                                 Sigma_eigvecs:ShapeDtypeStruct(shape=('b','b'), dtype = float),
+                                 nonzero_indices_int:ShapeDtypeStruct(shape=('foo1',), dtype = int),
+                                 zero_indices_int:ShapeDtypeStruct(shape=('foo2',), dtype = int),
+                                 Sigma_nonzero_eigvals_inv:ShapeDtypeStruct(shape=('foo1',), dtype = float),
+                                 selected_rows:ShapeDtypeStruct(shape=('foo3',), dtype = np.int32),
+                                 selected_rows_frac):
     X = jnp.array(X)
     # selected_rows = rng.choice(X.shape[0], int(selected_rows_frac*X.shape[0]), replace = False)
     dd_jacobian = jax.jacfwd(james_stein_singular_vec, argnums=0)
@@ -181,8 +206,18 @@ def james_stein_onsager_singular(X, Z, Sigma_eigvecs, nonzero_indices_int, zero_
     sum_jacobians = sum(jacobian_mat_list)
     onsager_term = jnp.matmul(Z, sum_jacobians.T)
     return onsager_term / (Z.shape[0] * selected_rows_frac)
-   
 
+
+def warm_up():
+    y = np.ones(5, dtype = float)
+    Sigma_inv = np.eye(5, dtype = float)
+    res1 = james_stein_nonsingular_vec(y, Sigma_inv)
+    res2 = james_stein_diagonal_vec(y, np.ones(5, dtype = float))
+    res3 = james_stein_singular_vec(y, Sigma_inv, np.array([0,1,2]), np.array([3,4]), np.ones(3, dtype = float))
+    res4 = james_stein_onsager_nonsingular(np.ones((2,5), dtype = float), Sigma_inv, Sigma_inv, np.array([0]), 1.0)
+    res5 = james_stein_onsager_singular(np.ones((2,5), dtype = float), Sigma_inv, Sigma_inv, np.array([0,1,2]), np.array([3,4]), np.ones(3, dtype = float), np.array([0]), 1.0)
+    return True
+    
 
 def update_residual_singular(A: float,
                              Y: float,
@@ -196,14 +231,14 @@ def update_residual_singular(A: float,
                              selected_rows,
                              selected_rows_frac):
     naive_residual = Y - np.matmul(A, signal_denoised_current)
-    onsager_term_ = jax.jit(james_stein_onsager_singular(signal_noisy_current,
+    onsager_term_ = james_stein_onsager_singular(signal_noisy_current,
                                                          Residual_prev,
                                                          noise_cov_current_eigvecs,
                                                          noise_cov_current_nonzero_indices_int,
                                                          noise_cov_current_zero_indices_int,
                                                          noise_cov_current_nonzero_eigvals_inv,
                                                          selected_rows,
-                                                         selected_rows_frac))
+                                                         selected_rows_frac)
     return naive_residual + onsager_term_
 
 
@@ -216,11 +251,11 @@ def update_residual_nonsingular(A: float,
                                 selected_rows,
                                 selected_rows_frac):
     naive_residual = Y - np.matmul(A, signal_denoised_current)
-    onsager_term_ = jax.jit(james_stein_onsager_nonsingular(signal_noisy_current,
+    onsager_term_ = james_stein_onsager_nonsingular(signal_noisy_current,
                                                             Residual_prev,
                                                             noise_cov_current_inv,
                                                             selected_rows,
-                                                            selected_rows_frac))
+                                                            selected_rows_frac)
     return naive_residual + onsager_term_
 
 
@@ -269,6 +304,12 @@ def amp_iteration_singular(A: float,
                                                 selected_rows, selected_rows_frac)
     return {'signal_denoised_current': signal_denoised_current,
             'Residual_current': Residual_current}
+
+
+def warm_up_2():
+    res1 = amp_iteration_nonsingular(np.eye(3), np.eye(3), 2*np.eye(3), np.eye(3), np.eye(3), np.array([0]), 1.0)
+    res2 = amp_iteration_singular(np.eye(3), np.eye(3), 2*np.eye(3), np.eye(3), np.eye(3), np.arange(2), np.array([2]), np.ones(2, dtype = float), np.array([0]), 1.0)
+    return True
 
 
 def gen_iid_normal_mtx(num_measurements, signal_nrow, rng):
@@ -363,8 +404,46 @@ def run_amp_instance(**dict_params):
     # noise_cov_current = np.matmul(Residual_current.T, Residual_current)/n
     # noise_cov_current_cov = np.cov(Residual_current.T)
     
+    start_time_iteration_1 = time.perf_counter()
+    iter_count = iter_count + 1
+
+    rng = np.random.default_rng(seed=seed(iter_count, k, n, N, B, err_tol, mc, sparsity_tol))
+
+    signal_denoised_prev = signal_denoised_current
+    signal_denoised_current = None
+    Residual_prev = Residual_current
+    Residual_current = None
+    # noise_cov_current = np.matmul(Residual_prev.T, Residual_prev)/n
+    noise_cov_current = np.cov(Residual_prev.T)
+    # noise_cov_current_diag = np.diag(np.var(Residual_prev, axis = 0))
+    selected_rows = rng.choice(N, int(selected_rows_frac*N), replace = False)
+    
+    D, U = np.linalg.eigh(noise_cov_current)
+    D = np.round(D, 10)
+    
+    if np.all(D > 0):
+        noise_cov_current_inv = np.matmul(U * 1.0/D, U.T)
+        dict_current = amp_iteration_nonsingular(A, Y, signal_denoised_prev, Residual_prev, noise_cov_current_inv, selected_rows, selected_rows_frac)
+    else:
+        nonzero_indices = (D > 0)
+        nonzero_indices_int = np.where(nonzero_indices)[0]
+        zero_indices_int = np.where(~nonzero_indices)[0]
+        D_nonzero_inv = 1/D[nonzero_indices_int]
+        dict_current = amp_iteration_singular(A, Y, signal_denoised_prev, Residual_prev, U, nonzero_indices_int, zero_indices_int, D_nonzero_inv, selected_rows, selected_rows_frac)
+    
+    signal_denoised_current = dict_current['signal_denoised_current']
+    Residual_current = dict_current['Residual_current']
+    
+    dict_observables = recovery_stats(signal_true,
+                               signal_denoised_current,
+                               sparsity_tol)
+    rel_err = dict_observables['rel_err']
+    min_rel_err = min(rel_err, min_rel_err)
+    end_time_iteration_1 = time.perf_counter()
+    dict_observables['time_iteration_1'] = end_time_iteration_1 - start_time_iteration_1
+
+    start_time_iteration_2_onwards = time.perf_counter()
     while iter_count<max_iter and rel_err>100*err_tol and rel_err<err_explosion_tol:
-        
         iter_count = iter_count + 1
 
         rng = np.random.default_rng(seed=seed(iter_count, k, n, N, B, err_tol, mc, sparsity_tol))
@@ -403,6 +482,7 @@ def run_amp_instance(**dict_params):
     tock = time.perf_counter() - tick
     dict_observables['min_rel_err'] = min_rel_err
     dict_observables['iter_count'] = iter_count
+    dict_observables['time_iteration_2_onwards'] = tock - start_time_iteration_2_onwards
     dict_observables['time_seconds'] = round(tock, 2)
 
     #return DataFrame(data = {**dict_params, **dict_observables}).set_index('iter_count')
@@ -482,11 +562,11 @@ def do_local_experiment():
 
 def read_and_do_local_experiment(json_file: str):
     exp = read_json(json_file)
-    with LocalCluster(dashboard_address='localhost:8787', n_workers=16) as cluster:
+    with LocalCluster(dashboard_address='localhost:8787', n_workers=2) as cluster:
     # with LocalCluster(dashboard_address='localhost:8787') as cluster:
         with Client(cluster) as client:
-            # do_on_cluster(exp, run_amp_instance, client, credentials=None)
-            do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
+            do_on_cluster(exp, run_amp_instance, client, credentials=None)
+            # do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
 
 
 def do_test_exp():
@@ -511,8 +591,8 @@ def count_params(json_file: str):
 
 
 if __name__ == '__main__':
-    # do_local_experiment()
-    read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_JS_approx_jacobian_normal_jax_delayed.json')
+    do_local_experiment()
+    # read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_JS_approx_jacobian_normal_jax_delayed.json')
     # count_params('updated_undersampling_int_grids.json')
     # do_coiled_experiment('exp_dicts/AMP_matrix_recovery_JS_approx_jacobian_normal_jax_delayed.json')
     # do_test_exp()
