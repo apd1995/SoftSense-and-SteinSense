@@ -14,15 +14,15 @@ dependencies:
   - google-auth
   - pandas-gbq>=0.19.2
   - cvxpy
+  - jax
   - dask
   - coiled
   - sqlalchemy
   - pg8000
   - cloud-sql-python-connector
-  - jax
   - pip
   - pip:
-    - git+https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/adonoho/EMS.git
+    - git+https://github.com/adonoho/EMS.git
 variables:
   MKL_NUM_THREADS: '1'
   OPENBLAS_NUM_THREADS: '1'

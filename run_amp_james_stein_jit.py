@@ -40,9 +40,8 @@ def seed(iter_count: int,
 
 
 @jax.jit
-@jax.named_call
-def james_stein_nonsingular_vec(y:ShapeDtypeStruct(shape=('b',), dtype = float),
-                                Sigma_inv:ShapeDtypeStruct(shape=('b','b'), dtype = float)):
+def james_stein_nonsingular_vec(y,
+                                Sigma_inv):
     d = len(y)
     quad_whitening = jnp.dot(y, jnp.dot(Sigma_inv, y))
     return jax.lax.cond(quad_whitening > (d-2),
@@ -73,9 +72,8 @@ def james_stein_nonsingular(X: np.ndarray, Sigma_inv: np.ndarray) -> np.ndarray:
 
 
 @jax.jit
-@jax.named_call
-def james_stein_diagonal_vec(y:ShapeDtypeStruct(shape=('foo4',), dtype = float),
-                             diag_inv:ShapeDtypeStruct(shape=('foo4',), dtype = float)):
+def james_stein_diagonal_vec(y,
+                             diag_inv):
     d = len(y)
     quad_whitening = jnp.sum(diag_inv * y**2)
     return jax.lax.cond(quad_whitening > (d-2),
@@ -92,12 +90,11 @@ def james_stein_diagonal(X, diag_inv):
 
 
 @jax.jit
-@jax.named_call
-def james_stein_singular_vec(y:ShapeDtypeStruct(shape=('b',), dtype = float),
-                             Sigma_eigvecs:ShapeDtypeStruct(shape=('b','b'), dtype = float),
-                             nonzero_indices_int:ShapeDtypeStruct(shape=('foo1',), dtype = int),
-                             zero_indices_int:ShapeDtypeStruct(shape=('foo2',), dtype = int),
-                             Sigma_nonzero_eigvals_inv:ShapeDtypeStruct(shape=('foo1',), dtype = float)):
+def james_stein_singular_vec(y,
+                             Sigma_eigvecs,
+                             nonzero_indices_int,
+                             zero_indices_int,
+                             Sigma_nonzero_eigvals_inv):
     
     # changing coordinates to get uncorrelated components
     y_indep = jnp.matmul(Sigma_eigvecs.T, y)
@@ -173,11 +170,10 @@ def update_signal_denoised_singular(signal_noisy_current: float,
 
 
 @jax.jit
-@jax.named_call
-def james_stein_onsager_nonsingular(X:ShapeDtypeStruct(shape=('n','b'), dtype = float),
-                                    Z:ShapeDtypeStruct(shape=('m','b'), dtype = float),
-                                    Sigma_inv:ShapeDtypeStruct(shape=('b','b'), dtype = float),
-                                    selected_rows:ShapeDtypeStruct(shape=('foo3',), dtype = int),
+def james_stein_onsager_nonsingular(X,
+                                    Z,
+                                    Sigma_inv,
+                                    selected_rows,
                                     selected_rows_frac):
     X = jnp.array(X)
     dd_jacobian = jax.jacfwd(james_stein_nonsingular_vec, argnums=0)
@@ -189,14 +185,13 @@ def james_stein_onsager_nonsingular(X:ShapeDtypeStruct(shape=('n','b'), dtype = 
   
     
 @jax.jit
-@jax.named_call
-def james_stein_onsager_singular(X:ShapeDtypeStruct(shape=('n','b'), dtype = float),
-                                 Z:ShapeDtypeStruct(shape=('m','b'), dtype = float),
-                                 Sigma_eigvecs:ShapeDtypeStruct(shape=('b','b'), dtype = float),
-                                 nonzero_indices_int:ShapeDtypeStruct(shape=('foo1',), dtype = int),
-                                 zero_indices_int:ShapeDtypeStruct(shape=('foo2',), dtype = int),
-                                 Sigma_nonzero_eigvals_inv:ShapeDtypeStruct(shape=('foo1',), dtype = float),
-                                 selected_rows:ShapeDtypeStruct(shape=('foo3',), dtype = np.int32),
+def james_stein_onsager_singular(X,
+                                 Z,
+                                 Sigma_eigvecs,
+                                 nonzero_indices_int,
+                                 zero_indices_int,
+                                 Sigma_nonzero_eigvals_inv,
+                                 selected_rows,
                                  selected_rows_frac):
     X = jnp.array(X)
     # selected_rows = rng.choice(X.shape[0], int(selected_rows_frac*X.shape[0]), replace = False)
@@ -477,12 +472,13 @@ def run_amp_instance(**dict_params):
                                    sparsity_tol)
         rel_err = dict_observables['rel_err']
         min_rel_err = min(rel_err, min_rel_err)
-    
+
     tock = time.perf_counter() - tick
+    end_time_iteration_2_onwards = time.perf_counter()
     dict_observables['min_rel_err'] = min_rel_err
     dict_observables['iter_count'] = iter_count
     dict_observables['time_iteration_1'] = end_time_iteration_1 - start_time_iteration_1
-    dict_observables['time_iteration_2_onwards'] = round(tock - start_time_iteration_2_onwards, 2)
+    dict_observables['time_iteration_2_onwards'] = round(end_time_iteration_2_onwards - start_time_iteration_2_onwards, 2)
     dict_observables['time_seconds'] = round(tock, 2)
 
     #return DataFrame(data = {**dict_params, **dict_observables}).set_index('iter_count')
