@@ -14,6 +14,7 @@ dependencies:
   - google-auth
   - pandas-gbq>=0.19.2
   - cvxpy
+  - jax
   - dask
   - coiled
   - sqlalchemy
