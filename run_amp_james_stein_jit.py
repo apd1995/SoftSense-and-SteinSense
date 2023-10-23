@@ -558,7 +558,7 @@ def do_local_experiment():
 
 def read_and_do_local_experiment(json_file: str):
     exp = read_json(json_file)
-    with LocalCluster(dashboard_address='localhost:8787', n_workers=20) as cluster:
+    with LocalCluster(dashboard_address='localhost:8787', n_workers=18) as cluster:
         with Client(cluster) as client:
             # do_on_cluster(exp, run_amp_instance, client, credentials=None)
             do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
