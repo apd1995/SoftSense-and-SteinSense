@@ -588,16 +588,16 @@ def do_local_experiment():
     logging.info(f'{json.dumps(dask.config.config, indent=4)}')
     with LocalCluster(dashboard_address='localhost:8787') as cluster:
         with Client(cluster) as client:
-            do_on_cluster(exp, run_amp_instance, client, credentials=None)
-            # do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
+            # do_on_cluster(exp, run_amp_instance, client, credentials=None)
+            do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
 
 
 def read_and_do_local_experiment(json_file: str):
     exp = read_json(json_file)
     with LocalCluster(dashboard_address='localhost:8787') as cluster:
         with Client(cluster) as client:
-            do_on_cluster(exp, run_amp_instance, client, credentials=None)
-            # do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
+            # do_on_cluster(exp, run_amp_instance, client, credentials=None)
+            do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
 
 
 def do_test_exp():
