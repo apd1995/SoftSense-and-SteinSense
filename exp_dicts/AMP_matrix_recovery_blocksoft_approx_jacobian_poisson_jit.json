@@ -57,6 +57,18 @@
             "signal_ncol": [
                 5
             ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ],
             "mc": [
                 0,
                 1,
@@ -84,11 +96,8 @@
                 23,
                 24
             ],
-            "err_tol": [
-                1e-05
-            ],
-            "sparsity_tol": [
-                0.0001
+            "selected_rows_frac": [
+                1.0
             ]
         },
         {
@@ -144,6 +153,18 @@
             "signal_ncol": [
                 5
             ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ],
             "mc": [
                 0,
                 1,
@@ -171,11 +192,8 @@
                 23,
                 24
             ],
-            "err_tol": [
-                1e-05
-            ],
-            "sparsity_tol": [
-                0.0001
+            "selected_rows_frac": [
+                1.0
             ]
         },
         {
@@ -231,6 +249,18 @@
             "signal_ncol": [
                 5
             ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ],
             "mc": [
                 0,
                 1,
@@ -258,11 +288,8 @@
                 23,
                 24
             ],
-            "err_tol": [
-                1e-05
-            ],
-            "sparsity_tol": [
-                0.0001
+            "selected_rows_frac": [
+                1.0
             ]
         },
         {
@@ -318,6 +345,18 @@
             "signal_ncol": [
                 5
             ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ],
             "mc": [
                 0,
                 1,
@@ -345,11 +384,8 @@
                 23,
                 24
             ],
-            "err_tol": [
-                1e-05
-            ],
-            "sparsity_tol": [
-                0.0001
+            "selected_rows_frac": [
+                1.0
             ]
         },
         {
@@ -405,6 +441,18 @@
             "signal_ncol": [
                 5
             ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ],
             "mc": [
                 0,
                 1,
@@ -432,11 +480,8 @@
                 23,
                 24
             ],
-            "err_tol": [
-                1e-05
-            ],
-            "sparsity_tol": [
-                0.0001
+            "selected_rows_frac": [
+                1.0
             ]
         },
         {
@@ -492,6 +537,18 @@
             "signal_ncol": [
                 5
             ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ],
             "mc": [
                 0,
                 1,
@@ -519,11 +576,8 @@
                 23,
                 24
             ],
-            "err_tol": [
-                1e-05
-            ],
-            "sparsity_tol": [
-                0.0001
+            "selected_rows_frac": [
+                1.0
             ]
         },
         {
@@ -579,6 +633,18 @@
             "signal_ncol": [
                 5
             ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ],
             "mc": [
                 0,
                 1,
@@ -606,11 +672,8 @@
                 23,
                 24
             ],
-            "err_tol": [
-                1e-05
-            ],
-            "sparsity_tol": [
-                0.0001
+            "selected_rows_frac": [
+                1.0
             ]
         },
         {
@@ -666,6 +729,18 @@
             "signal_ncol": [
                 5
             ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ],
             "mc": [
                 0,
                 1,
@@ -693,11 +768,8 @@
                 23,
                 24
             ],
-            "err_tol": [
-                1e-05
-            ],
-            "sparsity_tol": [
-                0.0001
+            "selected_rows_frac": [
+                1.0
             ]
         },
         {
@@ -753,6 +825,18 @@
             "signal_ncol": [
                 5
             ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ],
             "mc": [
                 0,
                 1,
@@ -780,11 +864,8 @@
                 23,
                 24
             ],
-            "err_tol": [
-                1e-05
-            ],
-            "sparsity_tol": [
-                0.0001
+            "selected_rows_frac": [
+                1.0
             ]
         },
         {
@@ -840,6 +921,18 @@
             "signal_ncol": [
                 5
             ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ],
             "mc": [
                 0,
                 1,
@@ -867,11 +960,8 @@
                 23,
                 24
             ],
-            "err_tol": [
-                1e-05
-            ],
-            "sparsity_tol": [
-                0.0001
+            "selected_rows_frac": [
+                1.0
             ]
         },
         {
@@ -927,6 +1017,18 @@
             "signal_ncol": [
                 5
             ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ],
             "mc": [
                 0,
                 1,
@@ -954,11 +1056,8 @@
                 23,
                 24
             ],
-            "err_tol": [
-                1e-05
-            ],
-            "sparsity_tol": [
-                0.0001
+            "selected_rows_frac": [
+                1.0
             ]
         },
         {
@@ -1014,6 +1113,18 @@
             "signal_ncol": [
                 5
             ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ],
             "mc": [
                 0,
                 1,
@@ -1041,11 +1152,8 @@
                 23,
                 24
             ],
-            "err_tol": [
-                1e-05
-            ],
-            "sparsity_tol": [
-                0.0001
+            "selected_rows_frac": [
+                1.0
             ]
         },
         {
@@ -1101,6 +1209,18 @@
             "signal_ncol": [
                 5
             ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ],
             "mc": [
                 0,
                 1,
@@ -1128,11 +1248,8 @@
                 23,
                 24
             ],
-            "err_tol": [
-                1e-05
-            ],
-            "sparsity_tol": [
-                0.0001
+            "selected_rows_frac": [
+                1.0
             ]
         },
         {
@@ -1184,6 +1301,18 @@
             "signal_ncol": [
                 5
             ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ],
             "mc": [
                 0,
                 1,
@@ -1211,11 +1340,8 @@
                 23,
                 24
             ],
-            "err_tol": [
-                1e-05
-            ],
-            "sparsity_tol": [
-                0.0001
+            "selected_rows_frac": [
+                1.0
             ]
         },
         {
@@ -1262,6 +1388,18 @@
             "signal_ncol": [
                 5
             ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ],
             "mc": [
                 0,
                 1,
@@ -1289,11 +1427,8 @@
                 23,
                 24
             ],
-            "err_tol": [
-                1e-05
-            ],
-            "sparsity_tol": [
-                0.0001
+            "selected_rows_frac": [
+                1.0
             ]
         },
         {
@@ -1336,6 +1471,18 @@
             "signal_ncol": [
                 5
             ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ],
             "mc": [
                 0,
                 1,
@@ -1363,11 +1510,8 @@
                 23,
                 24
             ],
-            "err_tol": [
-                1e-05
-            ],
-            "sparsity_tol": [
-                0.0001
+            "selected_rows_frac": [
+                1.0
             ]
         },
         {
@@ -1407,6 +1551,18 @@
             "signal_ncol": [
                 5
             ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ],
             "mc": [
                 0,
                 1,
@@ -1434,11 +1590,8 @@
                 23,
                 24
             ],
-            "err_tol": [
-                1e-05
-            ],
-            "sparsity_tol": [
-                0.0001
+            "selected_rows_frac": [
+                1.0
             ]
         },
         {
@@ -1475,6 +1628,18 @@
             "signal_ncol": [
                 5
             ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ],
             "mc": [
                 0,
                 1,
@@ -1502,11 +1667,8 @@
                 23,
                 24
             ],
-            "err_tol": [
-                1e-05
-            ],
-            "sparsity_tol": [
-                0.0001
+            "selected_rows_frac": [
+                1.0
             ]
         },
         {
@@ -1542,6 +1704,18 @@
             "signal_ncol": [
                 5
             ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ],
             "mc": [
                 0,
                 1,
@@ -1569,11 +1743,8 @@
                 23,
                 24
             ],
-            "err_tol": [
-                1e-05
-            ],
-            "sparsity_tol": [
-                0.0001
+            "selected_rows_frac": [
+                1.0
             ]
         },
         {
@@ -1669,6 +1840,18 @@
             "signal_ncol": [
                 5
             ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ],
             "mc": [
                 0,
                 1,
@@ -1696,11 +1879,8 @@
                 23,
                 24
             ],
-            "err_tol": [
-                1e-05
-            ],
-            "sparsity_tol": [
-                0.0001
+            "selected_rows_frac": [
+                1.0
             ]
         },
         {
@@ -1796,6 +1976,18 @@
             "signal_ncol": [
                 5
             ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ],
             "mc": [
                 0,
                 1,
@@ -1823,11 +2015,8 @@
                 23,
                 24
             ],
-            "err_tol": [
-                1e-05
-            ],
-            "sparsity_tol": [
-                0.0001
+            "selected_rows_frac": [
+                1.0
             ]
         },
         {
@@ -1923,6 +2112,18 @@
             "signal_ncol": [
                 5
             ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ],
             "mc": [
                 0,
                 1,
@@ -1950,11 +2151,8 @@
                 23,
                 24
             ],
-            "err_tol": [
-                1e-05
-            ],
-            "sparsity_tol": [
-                0.0001
+            "selected_rows_frac": [
+                1.0
             ]
         },
         {
@@ -2050,6 +2248,18 @@
             "signal_ncol": [
                 5
             ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ],
             "mc": [
                 0,
                 1,
@@ -2077,11 +2287,8 @@
                 23,
                 24
             ],
-            "err_tol": [
-                1e-05
-            ],
-            "sparsity_tol": [
-                0.0001
+            "selected_rows_frac": [
+                1.0
             ]
         },
         {
@@ -2177,6 +2384,18 @@
             "signal_ncol": [
                 5
             ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ],
             "mc": [
                 0,
                 1,
@@ -2204,11 +2423,8 @@
                 23,
                 24
             ],
-            "err_tol": [
-                1e-05
-            ],
-            "sparsity_tol": [
-                0.0001
+            "selected_rows_frac": [
+                1.0
             ]
         },
         {
@@ -2304,6 +2520,18 @@
             "signal_ncol": [
                 5
             ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ],
             "mc": [
                 0,
                 1,
@@ -2331,11 +2559,8 @@
                 23,
                 24
             ],
-            "err_tol": [
-                1e-05
-            ],
-            "sparsity_tol": [
-                0.0001
+            "selected_rows_frac": [
+                1.0
             ]
         },
         {
@@ -2431,6 +2656,18 @@
             "signal_ncol": [
                 5
             ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ],
             "mc": [
                 0,
                 1,
@@ -2458,11 +2695,8 @@
                 23,
                 24
             ],
-            "err_tol": [
-                1e-05
-            ],
-            "sparsity_tol": [
-                0.0001
+            "selected_rows_frac": [
+                1.0
             ]
         },
         {
@@ -2558,6 +2792,18 @@
             "signal_ncol": [
                 5
             ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ],
             "mc": [
                 0,
                 1,
@@ -2585,11 +2831,8 @@
                 23,
                 24
             ],
-            "err_tol": [
-                1e-05
-            ],
-            "sparsity_tol": [
-                0.0001
+            "selected_rows_frac": [
+                1.0
             ]
         },
         {
@@ -2685,6 +2928,18 @@
             "signal_ncol": [
                 5
             ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ],
             "mc": [
                 0,
                 1,
@@ -2712,11 +2967,8 @@
                 23,
                 24
             ],
-            "err_tol": [
-                1e-05
-            ],
-            "sparsity_tol": [
-                0.0001
+            "selected_rows_frac": [
+                1.0
             ]
         },
         {
@@ -2812,6 +3064,18 @@
             "signal_ncol": [
                 5
             ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ],
             "mc": [
                 0,
                 1,
@@ -2839,11 +3103,8 @@
                 23,
                 24
             ],
-            "err_tol": [
-                1e-05
-            ],
-            "sparsity_tol": [
-                0.0001
+            "selected_rows_frac": [
+                1.0
             ]
         },
         {
@@ -2939,6 +3200,18 @@
             "signal_ncol": [
                 5
             ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ],
             "mc": [
                 0,
                 1,
@@ -2966,11 +3239,8 @@
                 23,
                 24
             ],
-            "err_tol": [
-                1e-05
-            ],
-            "sparsity_tol": [
-                0.0001
+            "selected_rows_frac": [
+                1.0
             ]
         },
         {
@@ -3066,6 +3336,18 @@
             "signal_ncol": [
                 5
             ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ],
             "mc": [
                 0,
                 1,
@@ -3093,11 +3375,8 @@
                 23,
                 24
             ],
-            "err_tol": [
-                1e-05
-            ],
-            "sparsity_tol": [
-                0.0001
+            "selected_rows_frac": [
+                1.0
             ]
         },
         {
@@ -3193,6 +3472,18 @@
             "signal_ncol": [
                 5
             ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ],
             "mc": [
                 0,
                 1,
@@ -3220,11 +3511,8 @@
                 23,
                 24
             ],
-            "err_tol": [
-                1e-05
-            ],
-            "sparsity_tol": [
-                0.0001
+            "selected_rows_frac": [
+                1.0
             ]
         },
         {
@@ -3312,6 +3600,18 @@
             "signal_ncol": [
                 5
             ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ],
             "mc": [
                 0,
                 1,
@@ -3339,11 +3639,8 @@
                 23,
                 24
             ],
-            "err_tol": [
-                1e-05
-            ],
-            "sparsity_tol": [
-                0.0001
+            "selected_rows_frac": [
+                1.0
             ]
         },
         {
@@ -3421,6 +3718,18 @@
             "signal_ncol": [
                 5
             ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ],
             "mc": [
                 0,
                 1,
@@ -3448,11 +3757,8 @@
                 23,
                 24
             ],
-            "err_tol": [
-                1e-05
-            ],
-            "sparsity_tol": [
-                0.0001
+            "selected_rows_frac": [
+                1.0
             ]
         },
         {
@@ -3522,6 +3828,18 @@
             "signal_ncol": [
                 5
             ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ],
             "mc": [
                 0,
                 1,
@@ -3549,11 +3867,8 @@
                 23,
                 24
             ],
-            "err_tol": [
-                1e-05
-            ],
-            "sparsity_tol": [
-                0.0001
+            "selected_rows_frac": [
+                1.0
             ]
         },
         {
@@ -3617,6 +3932,18 @@
             "signal_ncol": [
                 5
             ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ],
             "mc": [
                 0,
                 1,
@@ -3644,11 +3971,8 @@
                 23,
                 24
             ],
-            "err_tol": [
-                1e-05
-            ],
-            "sparsity_tol": [
-                0.0001
+            "selected_rows_frac": [
+                1.0
             ]
         },
         {
@@ -3707,6 +4031,18 @@
             "signal_ncol": [
                 5
             ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ],
             "mc": [
                 0,
                 1,
@@ -3734,11 +4070,8 @@
                 23,
                 24
             ],
-            "err_tol": [
-                1e-05
-            ],
-            "sparsity_tol": [
-                0.0001
+            "selected_rows_frac": [
+                1.0
             ]
         },
         {
@@ -3794,6 +4127,18 @@
             "signal_ncol": [
                 5
             ],
+            "max_iter": [
+                500
+            ],
+            "err_tol": [
+                1e-05
+            ],
+            "sparsity_tol": [
+                0.0001
+            ],
+            "err_explosion_tol": [
+                100
+            ],
             "mc": [
                 0,
                 1,
@@ -3821,11 +4166,8 @@
                 23,
                 24
             ],
-            "err_tol": [
-                1e-05
-            ],
-            "sparsity_tol": [
-                0.0001
+            "selected_rows_frac": [
+                1.0
             ]
         }
     ]
