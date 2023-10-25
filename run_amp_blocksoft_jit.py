@@ -27,6 +27,7 @@ log_gbq.setLevel(logging.DEBUG)
 log_gbq.addHandler(logging.StreamHandler())
 import jax
 import jax.numpy as jnp
+logging.getLogger('jax').setLevel(logging.ERROR)
 
 
 # ===== minimax_tau_threshold.py =====
