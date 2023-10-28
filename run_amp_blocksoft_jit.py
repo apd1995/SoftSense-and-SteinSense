@@ -566,7 +566,7 @@ def test_experiment() -> dict:
 
 def do_coiled_experiment(json_file: str):
     exp = read_json(json_file)
-    logging.info(f'{json.dumps(dask.config.config, indent=4)}')
+    # logging.info(f'{json.dumps(dask.config.config, indent=4)}')
     software_environment = 'adonoho/amp_matrix_recovery'
     # coiled.delete_software_environment(name=software_environment)
     logging.info('Creating environment.')
@@ -574,11 +574,11 @@ def do_coiled_experiment(json_file: str):
         name=software_environment,
         conda="environment-coiled.yml",
         pip=[
-            "git+https://GIT_TOKEN@github.com/adonoho/EMS.git"
+            "git+https://github.com/adonoho/EMS.git"
         ]
     )
     with coiled.Cluster(software=software_environment,
-                        n_workers=960, worker_vm_types=['n1-standard-1'],
+                        n_workers=320, worker_vm_types=['n1-standard-1'],
                         use_best_zone=True, spot_policy='spot') as cluster:
         with Client(cluster) as client:
             do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
@@ -595,7 +595,7 @@ def do_local_experiment():
 
 def read_and_do_local_experiment(json_file: str):
     exp = read_json(json_file)
-    with LocalCluster(dashboard_address='localhost:8787', n_workers=20) as cluster:
+    with LocalCluster(dashboard_address='localhost:8787', n_workers=16) as cluster:
         with Client(cluster) as client:
             # do_on_cluster(exp, run_amp_instance, client, credentials=None)
             do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
@@ -624,9 +624,9 @@ def count_params(json_file: str):
 
 if __name__ == '__main__':
     # do_local_experiment()
-    read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_blocksoft_approx_jacobian_poisson_jit.json')
+    # read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_blocksoft_approx_jacobian_poisson_jit.json')
     # count_params('updated_undersampling_int_grids.json')
-    # do_coiled_experiment('exp_dicts/AMP_matrix_recovery_blocksoft_approx_jacobian_poisson_jit.json')
+    do_coiled_experiment('exp_dicts/AMP_matrix_recovery_blocksoft_approx_jacobian_poisson_jit.json')
     # do_test_exp()
     # do_test()
     # run_block_bp_experiment('block_bp_inputs.json')
