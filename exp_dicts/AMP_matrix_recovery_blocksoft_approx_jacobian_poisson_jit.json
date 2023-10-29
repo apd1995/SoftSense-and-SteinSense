@@ -1,7 +1,7 @@
 {
     "table_name": "AMP_matrix_recovery_blocksoft_approx_jacobian_poisson_jit",
     "base_index": 0,
-    "description": "Max iter = 1000. Performs 25 mc runs at integer undersampling point in the grid of upper-width 0.1 above predicted undersampling point, with blocksoft denoiser. Sparsity equals 0.7. No. of rows varies in [10000, 20000] and no. of columns is 5. cov(resid) used to estimate the noise covariance at each iteration instead of resid.T * resid/n.",
+    "description": "Max iter = 1000. Performs 25 mc runs at integer undersampling point in the grid of upper-width 0.1 above predicted undersampling point, with blocksoft denoiser. Sparsity equals 0.7. No. of rows varies in [200, 400, 800, 1600, 3200] and no. of columns is 5. cov(resid) used to estimate the noise covariance at each iteration instead of resid.T * resid/n.",
     "db_url": "sqlite:///data/EMS.db3",
     "multi_res": [
         {
