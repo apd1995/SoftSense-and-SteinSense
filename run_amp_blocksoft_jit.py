@@ -574,11 +574,11 @@ def do_coiled_experiment(json_file: str):
         name=software_environment,
         conda="environment-coiled.yml",
         pip=[
-            "git+https://GIT_TOKEN@github.com/adonoho/EMS.git"
+            "git+https://github.com/adonoho/EMS.git"
         ]
     )
     with coiled.Cluster(software=software_environment,
-                        n_workers=960, worker_vm_types=['n1-standard-1'],
+                        n_workers=320, worker_vm_types=['n1-standard-1'],
                         use_best_zone=True, spot_policy='spot') as cluster:
         with Client(cluster) as client:
             do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
@@ -595,9 +595,8 @@ def do_local_experiment():
 
 def read_and_do_local_experiment(json_file: str):
     exp = read_json(json_file)
-    with LocalCluster(dashboard_address='localhost:8787', n_workers=20) as cluster:
+    with LocalCluster(dashboard_address='localhost:8787', n_workers=32) as cluster:
         with Client(cluster) as client:
-            # do_on_cluster(exp, run_amp_instance, client, credentials=None)
             do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
 
 
