@@ -399,8 +399,8 @@ def run_amp_instance(**dict_params):
     rng = np.random.default_rng(seed=seed(iter_count, k, n, N, B, err_tol, mc, sparsity_tol))
     signal_true = np.zeros((N, B), dtype=float)
     nonzero_indices = rng.choice(range(N), k, replace=False)
-    # signal_true[nonzero_indices, :] = rng.normal(0, 1, (k, B))
-    signal_true[nonzero_indices, :] = rng.poisson(2, (k, B))
+    signal_true[nonzero_indices, :] = rng.normal(0, 1, (k, B))
+    # signal_true[nonzero_indices, :] = rng.poisson(2, (k, B))
     signal_true = np.array(signal_true)
    
     A = gen_iid_normal_mtx(n, N, rng)/np.sqrt(n)
