@@ -1,7 +1,7 @@
 {
     "table_name": "AMP_matrix_recovery_blocksoft_approx_jacobian_normal_jit",
     "base_index": 0,
-    "description": "Max iter = 1000. Performs 25 mc runs at integer undersampling point in the grid of upper-width 0.1 above predicted undersampling point, with blocksoft denoiser. Sparsity varies in [0.7,...,0.95]. No. of rows varies in [200, 400, 800] and no. of columns is 5. cov(resid) used to estimate the noise covariance at each iteration instead of resid.T * resid/n.",
+    "description": "Max iter = 1500. Performs 25 mc runs at integer undersampling point in the grid of upper-width 0.1 above predicted undersampling point, with blocksoft denoiser. Sparsity varies in [0.7,...,0.95]. No. of rows varies in [200, 400, 800] and no. of columns is 5. cov(resid) used to estimate the noise covariance at each iteration instead of resid.T * resid/n. Err threshold is chosen to be 1e-5.",
     "db_url": "sqlite:///data/EMS.db3",
     "multi_res": [
         {
@@ -35,7 +35,7 @@
                 5
             ],
             "max_iter": [
-                1000
+                1500
             ],
             "err_tol": [
                 1e-05
@@ -103,7 +103,7 @@
                 5
             ],
             "max_iter": [
-                1000
+                1500
             ],
             "err_tol": [
                 1e-05
@@ -167,7 +167,7 @@
                 5
             ],
             "max_iter": [
-                1000
+                1500
             ],
             "err_tol": [
                 1e-05
@@ -228,7 +228,7 @@
                 5
             ],
             "max_iter": [
-                1000
+                1500
             ],
             "err_tol": [
                 1e-05
@@ -286,7 +286,7 @@
                 5
             ],
             "max_iter": [
-                1000
+                1500
             ],
             "err_tol": [
                 1e-05
@@ -343,7 +343,7 @@
                 5
             ],
             "max_iter": [
-                1000
+                1500
             ],
             "err_tol": [
                 1e-05
@@ -432,7 +432,7 @@
                 5
             ],
             "max_iter": [
-                1000
+                1500
             ],
             "err_tol": [
                 1e-05
@@ -511,7 +511,7 @@
                 5
             ],
             "max_iter": [
-                1000
+                1500
             ],
             "err_tol": [
                 1e-05
@@ -582,7 +582,7 @@
                 5
             ],
             "max_iter": [
-                1000
+                1500
             ],
             "err_tol": [
                 1e-05
@@ -647,7 +647,7 @@
                 5
             ],
             "max_iter": [
-                1000
+                1500
             ],
             "err_tol": [
                 1e-05
@@ -707,7 +707,7 @@
                 5
             ],
             "max_iter": [
-                1000
+                1500
             ],
             "err_tol": [
                 1e-05
@@ -764,7 +764,7 @@
                 5
             ],
             "max_iter": [
-                1000
+                1500
             ],
             "err_tol": [
                 1e-05
@@ -886,7 +886,7 @@
                 5
             ],
             "max_iter": [
-                1000
+                1500
             ],
             "err_tol": [
                 1e-05
@@ -988,7 +988,7 @@
                 5
             ],
             "max_iter": [
-                1000
+                1500
             ],
             "err_tol": [
                 1e-05
@@ -1073,7 +1073,7 @@
                 5
             ],
             "max_iter": [
-                1000
+                1500
             ],
             "err_tol": [
                 1e-05
@@ -1146,7 +1146,7 @@
                 5
             ],
             "max_iter": [
-                1000
+                1500
             ],
             "err_tol": [
                 1e-05
@@ -1210,7 +1210,7 @@
                 5
             ],
             "max_iter": [
-                1000
+                1500
             ],
             "err_tol": [
                 1e-05
@@ -1268,7 +1268,7 @@
                 5
             ],
             "max_iter": [
-                1000
+                1500
             ],
             "err_tol": [
                 1e-05
