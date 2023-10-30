@@ -230,7 +230,7 @@ def block_soft_thresholding_onsager_singular(X,
     onsager_term = jnp.matmul(Z, sum_jacobians.T)
     return onsager_term / (Z.shape[0] * selected_rows_frac)
 
-@jax.jit
+
 def update_residual_nonsingular(A: float,
                                 Y: float,
                                 signal_noisy_current: float,
@@ -249,7 +249,7 @@ def update_residual_nonsingular(A: float,
                                                             selected_rows_frac)
     return naive_residual + onsager_term_
     
-@jax.jit
+
 def update_residual_singular(A: float,
                              Y: float,
                              signal_noisy_current: float,
@@ -274,7 +274,7 @@ def update_residual_singular(A: float,
                                                          selected_rows_frac)
     return naive_residual + onsager_term_
 
-@jax.jit
+
 def amp_iteration_nonsingular(A: float,
                               Y: float,
                               signal_denoised_prev: float,
@@ -298,7 +298,7 @@ def amp_iteration_nonsingular(A: float,
     return {'signal_denoised_current': signal_denoised_current,
             'Residual_current': Residual_current}
 
-@jax.jit
+
 def amp_iteration_singular(A: float,
                            Y: float,
                            signal_denoised_prev: float,
