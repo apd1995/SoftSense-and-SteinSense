@@ -230,7 +230,7 @@ def block_soft_thresholding_onsager_singular(X,
     onsager_term = jnp.matmul(Z, sum_jacobians.T)
     return onsager_term / (Z.shape[0] * selected_rows_frac)
 
-
+@jax.jit
 def update_residual_nonsingular(A: float,
                                 Y: float,
                                 signal_noisy_current: float,
@@ -240,7 +240,7 @@ def update_residual_nonsingular(A: float,
                                 noise_cov_current_inv: float,
                                 selected_rows,
                                 selected_rows_frac):
-    naive_residual = Y - np.matmul(A, signal_denoised_current)
+    naive_residual = Y - jnp.matmul(A, signal_denoised_current)
     onsager_term_ = block_soft_thresholding_onsager_nonsingular(signal_noisy_current,
                                                             Residual_prev,
                                                             tau,
@@ -249,7 +249,7 @@ def update_residual_nonsingular(A: float,
                                                             selected_rows_frac)
     return naive_residual + onsager_term_
     
-
+@jax.jit
 def update_residual_singular(A: float,
                              Y: float,
                              signal_noisy_current: float,
@@ -262,7 +262,7 @@ def update_residual_singular(A: float,
                              noise_cov_current_nonzero_eigvals_inv: float,
                              selected_rows,
                              selected_rows_frac):
-    naive_residual = Y - np.matmul(A, signal_denoised_current)
+    naive_residual = Y - jnp.matmul(A, signal_denoised_current)
     onsager_term_ = block_soft_thresholding_onsager_singular(signal_noisy_current,
                                                          Residual_prev,
                                                          tau,
@@ -274,7 +274,7 @@ def update_residual_singular(A: float,
                                                          selected_rows_frac)
     return naive_residual + onsager_term_
 
-
+@jax.jit
 def amp_iteration_nonsingular(A: float,
                               Y: float,
                               signal_denoised_prev: float,
@@ -298,7 +298,7 @@ def amp_iteration_nonsingular(A: float,
     return {'signal_denoised_current': signal_denoised_current,
             'Residual_current': Residual_current}
 
-
+@jax.jit
 def amp_iteration_singular(A: float,
                            Y: float,
                            signal_denoised_prev: float,
@@ -469,7 +469,7 @@ def run_amp_instance(**dict_params):
     end_time_iteration_1 = time.perf_counter()
     
     start_time_iteration_2_onwards = time.perf_counter()
-    while iter_count<max_iter and rel_err>100*err_tol and rel_err<err_explosion_tol:
+    while iter_count<max_iter and rel_err>err_tol and rel_err<err_explosion_tol:
         iter_count = iter_count + 1
 
         rng = np.random.default_rng(seed=seed(iter_count, k, n, N, B, err_tol, mc, sparsity_tol))
