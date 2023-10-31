@@ -9,7 +9,7 @@ Created on Fri Aug 25 12:30:15 2023
 import numpy as np
 from numpy.random import Generator
 import cvxpy as cvx
-from pandas import DataFrame
+from pandas import DataFrame, concat
 import time
 # import amp_iteration as amp
 # from minimax_tau_threshold import minimax_tau_threshold
@@ -199,16 +199,14 @@ def update_signal_denoised_singular(signal_noisy_current: float,
 
 
 @jax.jit
-def block_soft_thresholding_onsager_nonsingular(X, Z, tau, Sigma_inv,
-                                                selected_rows,
-                                                selected_rows_frac):
+def block_soft_thresholding_onsager_nonsingular(X, Z, tau, Sigma_inv):
     X = jnp.array(X)
     dd_jacobian = jax.jacfwd(block_soft_thresholding_nonsingular_vec, argnums=0)
     # dd_jacobian = jax.jit(jax.jacfwd(james_stein_nonsingular_vec, argnums=0))
     jac_vectorized = jax.vmap(dd_jacobian, in_axes = (0, None, None)) # None for all the other inputs to denoiser
     sum_jacobians = jac_vectorized(X, tau, Sigma_inv).sum(axis = 0)
     onsager_term = jnp.matmul(Z, sum_jacobians.T)
-    return onsager_term / (Z.shape[0] * selected_rows_frac)
+    return onsager_term / Z.shape[0]
 
 
 @jax.jit
@@ -218,9 +216,7 @@ def block_soft_thresholding_onsager_singular(X,
                                  Sigma_eigvecs,
                                  nonzero_indices_int,
                                  zero_indices_int,
-                                 Sigma_nonzero_eigvals_inv,
-                                 selected_rows,
-                                 selected_rows_frac):
+                                 Sigma_nonzero_eigvals_inv):
     X = jnp.array(X)
     # selected_rows = rng.choice(X.shape[0], int(selected_rows_frac*X.shape[0]), replace = False)
     dd_jacobian = jax.jacfwd(block_soft_thresholding_singular_vec, argnums=0)
@@ -228,7 +224,7 @@ def block_soft_thresholding_onsager_singular(X,
     jac_vectorized = jax.vmap(dd_jacobian, in_axes = (0, None, None, None, None, None)) # None for all the other inputs to denoiser
     sum_jacobians = jac_vectorized(X, tau, Sigma_eigvecs, nonzero_indices_int, zero_indices_int, Sigma_nonzero_eigvals_inv).sum(axis = 0)
     onsager_term = jnp.matmul(Z, sum_jacobians.T)
-    return onsager_term / (Z.shape[0] * selected_rows_frac)
+    return onsager_term /Z.shape[0]
 
 
 def update_residual_nonsingular(A: float,
@@ -237,16 +233,12 @@ def update_residual_nonsingular(A: float,
                                 signal_denoised_current: float,
                                 Residual_prev: float,
                                 tau: float,
-                                noise_cov_current_inv: float,
-                                selected_rows,
-                                selected_rows_frac):
+                                noise_cov_current_inv: float):
     naive_residual = Y - jnp.matmul(A, signal_denoised_current)
     onsager_term_ = block_soft_thresholding_onsager_nonsingular(signal_noisy_current,
                                                             Residual_prev,
                                                             tau,
-                                                            noise_cov_current_inv,
-                                                            selected_rows,
-                                                            selected_rows_frac)
+                                                            noise_cov_current_inv)
     return naive_residual + onsager_term_
     
 
@@ -259,9 +251,7 @@ def update_residual_singular(A: float,
                              noise_cov_current_eigvecs: float,
                              noise_cov_current_nonzero_indices_int,
                              noise_cov_current_zero_indices_int,
-                             noise_cov_current_nonzero_eigvals_inv: float,
-                             selected_rows,
-                             selected_rows_frac):
+                             noise_cov_current_nonzero_eigvals_inv: float):
     naive_residual = Y - jnp.matmul(A, signal_denoised_current)
     onsager_term_ = block_soft_thresholding_onsager_singular(signal_noisy_current,
                                                          Residual_prev,
@@ -269,9 +259,7 @@ def update_residual_singular(A: float,
                                                          noise_cov_current_eigvecs,
                                                          noise_cov_current_nonzero_indices_int,
                                                          noise_cov_current_zero_indices_int,
-                                                         noise_cov_current_nonzero_eigvals_inv,
-                                                         selected_rows,
-                                                         selected_rows_frac)
+                                                         noise_cov_current_nonzero_eigvals_inv)
     return naive_residual + onsager_term_
 
 
@@ -280,9 +268,7 @@ def amp_iteration_nonsingular(A: float,
                               signal_denoised_prev: float,
                               Residual_prev: float,
                               tau: float,
-                              noise_cov_current_inv: float,
-                              selected_rows,
-                              selected_rows_frac):
+                              noise_cov_current_inv: float):
     signal_noisy_current = update_signal_noisy(A, signal_denoised_prev, Residual_prev)
     # noise_cov_current = Residual_prev.T @ Residual_prev/A.shape[0]
     signal_denoised_current = update_signal_denoised_nonsingular(signal_noisy_current, tau, noise_cov_current_inv)
@@ -292,9 +278,7 @@ def amp_iteration_nonsingular(A: float,
                                                    signal_denoised_current,
                                                    Residual_prev,
                                                    tau,
-                                                   noise_cov_current_inv,
-                                                   selected_rows,
-                                                   selected_rows_frac)
+                                                   noise_cov_current_inv)
     return {'signal_denoised_current': signal_denoised_current,
             'Residual_current': Residual_current}
 
@@ -307,9 +291,7 @@ def amp_iteration_singular(A: float,
                            noise_cov_current_eigvecs: float,
                            noise_cov_current_nonzero_indices_int,
                            noise_cov_current_zero_indices_int,
-                           noise_cov_current_nonzero_eigvals_inv: float,
-                           selected_rows,
-                           selected_rows_frac):
+                           noise_cov_current_nonzero_eigvals_inv: float):
     signal_noisy_current = update_signal_noisy(A, signal_denoised_prev, Residual_prev)
     # noise_cov_current = Residual_prev.T @ Residual_prev/A.shape[0]
     signal_denoised_current = update_signal_denoised_singular(signal_noisy_current, tau,
@@ -324,8 +306,7 @@ def amp_iteration_singular(A: float,
                                                 noise_cov_current_eigvecs, 
                                                 noise_cov_current_nonzero_indices_int,
                                                 noise_cov_current_zero_indices_int,
-                                                noise_cov_current_nonzero_eigvals_inv,
-                                                selected_rows, selected_rows_frac)
+                                                noise_cov_current_nonzero_eigvals_inv)
     return {'signal_denoised_current': signal_denoised_current,
             'Residual_current': Residual_current}
 
@@ -381,6 +362,10 @@ def recovery_stats(X_true: float,
     return dict_observables
 
 
+def add_row_to_df(dict_to_add, df):
+    return concat([df, DataFrame(dict_to_add, index = [0])], ignore_index=True)
+
+
 def run_amp_instance(**dict_params):
     
     k = dict_params['nonzero_rows']
@@ -392,7 +377,6 @@ def run_amp_instance(**dict_params):
     sparsity_tol = dict_params['sparsity_tol']
     max_iter = dict_params['max_iter']
     err_explosion_tol = dict_params['err_explosion_tol']
-    selected_rows_frac = dict_params['selected_rows_frac']
     
     iter_count = 0
     
@@ -410,11 +394,11 @@ def run_amp_instance(**dict_params):
     dict_params['sparsity'] = sparsity
     dict_params['undersampling_ratio'] = n/N
     
+    output_df = None
+    
     tau_nominal = minimax_tau_threshold(sparsity, B)
     
     iter_count = 0
-    
-    tick = time.perf_counter()
     
     signal_denoised_current = np.zeros((N, B), dtype = float)
     Residual_current = Y
@@ -426,62 +410,18 @@ def run_amp_instance(**dict_params):
     # rec_stats_dict['iter_count'] = iter_count
     min_rel_err = rel_err
     
-    start_time_iteration_1 = time.perf_counter()
-    iter_count = iter_count + 1
-
-    rng = np.random.default_rng(seed=seed(iter_count, k, n, N, B, err_tol, mc, sparsity_tol))
-
-    signal_denoised_prev = signal_denoised_current
-    signal_denoised_current = None
-    Residual_prev = Residual_current
-    Residual_current = None
-    # noise_cov_current = np.matmul(Residual_prev.T, Residual_prev)/n
-    noise_cov_current = np.cov(Residual_prev.T)
-    # noise_cov_current_diag = np.diag(np.var(Residual_prev, axis = 0))
-    selected_rows = rng.choice(N, int(selected_rows_frac*N), replace = False)
-    
-    D, U = np.linalg.eigh(noise_cov_current)
-    D = np.round(D, 10)
-    
-    if np.all(D > 0):
-        tau = tau_nominal
-        noise_cov_current_inv = np.matmul(U * 1.0/D, U.T)
-        dict_current = amp_iteration_nonsingular(A, Y, signal_denoised_prev,
-                                                 Residual_prev,
-                                                 tau,
-                                                 noise_cov_current_inv, selected_rows, selected_rows_frac)
-    else:
-        nonzero_indices = (D > 0)
-        nonzero_indices_int = np.where(nonzero_indices)[0]
-        zero_indices_int = np.where(~nonzero_indices)[0]
-        tau = minimax_tau_threshold(sparsity, sum(nonzero_indices))
-        D_nonzero_inv = 1/D[nonzero_indices_int]
-        dict_current = amp_iteration_singular(A, Y, signal_denoised_prev, Residual_prev, tau, U, nonzero_indices_int, zero_indices_int, D_nonzero_inv, selected_rows, selected_rows_frac)
-    
-    signal_denoised_current = dict_current['signal_denoised_current']
-    Residual_current = dict_current['Residual_current']
-    
-    dict_observables = recovery_stats(signal_true,
-                               signal_denoised_current,
-                               sparsity_tol)
-    rel_err = dict_observables['rel_err']
-    min_rel_err = min(rel_err, min_rel_err)
-    end_time_iteration_1 = time.perf_counter()
-    
-    start_time_iteration_2_onwards = time.perf_counter()
     while iter_count<max_iter and rel_err>err_tol and rel_err<err_explosion_tol:
+        tick = time.perf_counter()
+        
         iter_count = iter_count + 1
 
-        rng = np.random.default_rng(seed=seed(iter_count, k, n, N, B, err_tol, mc, sparsity_tol))
-
-        signal_denoised_prev = signal_denoised_current
-        signal_denoised_current = None
-        Residual_prev = Residual_current
-        Residual_current = None
+        # signal_denoised_prev = signal_denoised_current
+        # signal_denoised_current = None
+        # Residual_prev = Residual_current
+        # Residual_current = None
         # noise_cov_current = np.matmul(Residual_prev.T, Residual_prev)/n
-        noise_cov_current = np.cov(Residual_prev.T)
+        noise_cov_current = np.cov(Residual_current.T)
         # noise_cov_current_diag = np.diag(np.var(Residual_prev, axis = 0))
-        selected_rows = rng.choice(N, int(selected_rows_frac*N), replace = False)
         
         D, U = np.linalg.eigh(noise_cov_current)
         D = np.round(D, 10)
@@ -489,7 +429,7 @@ def run_amp_instance(**dict_params):
         if np.all(D > 0):
             tau = tau_nominal
             noise_cov_current_inv = np.matmul(U * 1.0/D, U.T)
-            dict_current = amp_iteration_nonsingular(A, Y, signal_denoised_prev, Residual_prev, tau, noise_cov_current_inv, selected_rows, selected_rows_frac)
+            dict_current = amp_iteration_nonsingular(A, Y, signal_denoised_current, Residual_current, tau, noise_cov_current_inv)
         else:
             nonzero_indices = (D > 0)
             nonzero_indices_int = np.where(nonzero_indices)[0]
@@ -497,29 +437,34 @@ def run_amp_instance(**dict_params):
             tau = minimax_tau_threshold(sparsity, sum(nonzero_indices))
             D_nonzero_inv = 1/D[nonzero_indices_int]
             dict_current = amp_iteration_singular(A, Y, 
-                                                  signal_denoised_prev, 
-                                                  Residual_prev, 
-                                                  tau, U, nonzero_indices_int, zero_indices_int, D_nonzero_inv, selected_rows, selected_rows_frac)
+                                                  signal_denoised_current, 
+                                                  Residual_current, 
+                                                  tau, U, nonzero_indices_int, zero_indices_int, D_nonzero_inv)
         
         signal_denoised_current = dict_current['signal_denoised_current']
         Residual_current = dict_current['Residual_current']
-        
         dict_observables = recovery_stats(signal_true,
                                    signal_denoised_current,
                                    sparsity_tol)
         rel_err = dict_observables['rel_err']
         min_rel_err = min(rel_err, min_rel_err)
-    
-    end_time_iteration_2_onwards = time.perf_counter()
-    tock = time.perf_counter() - tick
-    dict_observables['min_rel_err'] = min_rel_err
-    dict_observables['iter_count'] = iter_count
-    dict_observables['time_iteration_1'] = round(end_time_iteration_1 - start_time_iteration_1, 2)
-    dict_observables['time_iteration_2_onwards'] = round(end_time_iteration_2_onwards - start_time_iteration_2_onwards, 2)
-    dict_observables['time_seconds'] = round(tock, 2)
+        tock = time.perf_counter() - tick
+        if iter_count % 50 == 0:
+            dict_observables['min_rel_err'] = min_rel_err
+            dict_observables['iter_count'] = iter_count
+            dict_observables['time_seconds'] = round(tock, 2)
+            combined_dict = {**dict_params, **dict_observables}
+            output_df = add_row_to_df(combined_dict, output_df)
+
+    if iter_count % 50 != 0:
+        dict_observables['min_rel_err'] = min_rel_err
+        dict_observables['iter_count'] = iter_count
+        dict_observables['time_seconds'] = round(tock, 2)
+        combined_dict = {**dict_params, **dict_observables}
+        output_df = add_row_to_df(combined_dict, output_df)
 
     #return DataFrame(data = {**dict_params, **dict_observables}).set_index('iter_count')
-    return DataFrame(data = {**dict_params, **dict_observables}, index = [0])
+    return output_df
 
 
 def test_experiment() -> dict:
@@ -589,15 +534,16 @@ def do_local_experiment():
     logging.info(f'{json.dumps(dask.config.config, indent=4)}')
     with LocalCluster(dashboard_address='localhost:8787') as cluster:
         with Client(cluster) as client:
-            # do_on_cluster(exp, run_amp_instance, client, credentials=None)
-            do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
+            do_on_cluster(exp, run_amp_instance, client, credentials=None)
+            # do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
 
 
 def read_and_do_local_experiment(json_file: str):
     exp = read_json(json_file)
-    with LocalCluster(dashboard_address='localhost:8787', n_workers=32) as cluster:
+    with LocalCluster(dashboard_address='localhost:8787', n_workers=4) as cluster:
         with Client(cluster) as client:
-            do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
+            do_on_cluster(exp, run_amp_instance, client, credentials=None)
+            # do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
 
 
 def do_test_exp():
@@ -623,9 +569,9 @@ def count_params(json_file: str):
 
 if __name__ == '__main__':
     # do_local_experiment()
-    # read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_blocksoft_approx_jacobian_normal_jit.json')
+    read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_blocksoft_approx_jacobian_normal_jit.json')
     # count_params('updated_undersampling_int_grids.json')
-    do_coiled_experiment('exp_dicts/AMP_matrix_recovery_blocksoft_approx_jacobian_normal_jit.json')
+    # do_coiled_experiment('exp_dicts/AMP_matrix_recovery_blocksoft_approx_jacobian_normal_jit.json')
     # do_test_exp()
     # do_test()
     # run_block_bp_experiment('block_bp_inputs.json')
