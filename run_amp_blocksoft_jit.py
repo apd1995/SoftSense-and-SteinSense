@@ -534,16 +534,16 @@ def do_local_experiment():
     logging.info(f'{json.dumps(dask.config.config, indent=4)}')
     with LocalCluster(dashboard_address='localhost:8787') as cluster:
         with Client(cluster) as client:
-            do_on_cluster(exp, run_amp_instance, client, credentials=None)
-            # do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
+            # do_on_cluster(exp, run_amp_instance, client, credentials=None)
+            do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
 
 
 def read_and_do_local_experiment(json_file: str):
     exp = read_json(json_file)
-    with LocalCluster(dashboard_address='localhost:8787', n_workers=4) as cluster:
+    with LocalCluster(dashboard_address='localhost:8787', n_workers=32) as cluster:
         with Client(cluster) as client:
-            do_on_cluster(exp, run_amp_instance, client, credentials=None)
-            # do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
+            # do_on_cluster(exp, run_amp_instance, client, credentials=None)
+            do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
 
 
 def do_test_exp():
@@ -569,9 +569,9 @@ def count_params(json_file: str):
 
 if __name__ == '__main__':
     # do_local_experiment()
-    read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_blocksoft_approx_jacobian_normal_jit.json')
+    read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_blocksoft_normal_jit.json')
     # count_params('updated_undersampling_int_grids.json')
-    # do_coiled_experiment('exp_dicts/AMP_matrix_recovery_blocksoft_approx_jacobian_normal_jit.json')
+    # do_coiled_experiment('exp_dicts/AMP_matrix_recovery_blocksoft_normal_jit.json')
     # do_test_exp()
     # do_test()
     # run_block_bp_experiment('block_bp_inputs.json')
