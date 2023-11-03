@@ -511,7 +511,7 @@ def test_experiment() -> dict:
 
 def do_coiled_experiment(json_file: str):
     exp = read_json(json_file)
-    logging.info(f'{json.dumps(dask.config.config, indent=4)}')
+    # logging.info(f'{json.dumps(dask.config.config, indent=4)}')
     software_environment = 'adonoho/amp_matrix_recovery'
     # coiled.delete_software_environment(name=software_environment)
     logging.info('Creating environment.')
