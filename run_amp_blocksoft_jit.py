@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Fri Aug 25 12:30:15 2023
+Created on Thu Nov 2 2:57:15 2023
 
 @author: apratimdey
 """
@@ -333,30 +333,43 @@ def gen_iid_normal_mtx(num_measurements, signal_nrow, rng):
 
 def recovery_stats(X_true: float,
               X_rec: float,
-              sparsity_tol: float):
+              sparsity_tol: float,
+              A: np.ndarray,
+              Y_true: np.ndarray):
     
     N, B = X_true.shape
+    n = Y_true.shape[0]
+    Y_rec = np.matmul(A, X_rec)
 
     zero_indices_true = (np.apply_along_axis(np.linalg.norm, 1, X_true)==0)
-    zero_indices_rec = (np.apply_along_axis(np.linalg.norm, 1, X_rec)/np.sqrt(B)<=10*sparsity_tol)
+    zero_indices_rec = (np.apply_along_axis(np.linalg.norm, 1, X_rec)/np.sqrt(B)<=sparsity_tol)
 
     nonzero_indices_true = (np.apply_along_axis(np.linalg.norm, 1, X_true)!=0)
-    nonzero_indices_rec = (np.apply_along_axis(np.linalg.norm, 1, X_rec)/np.sqrt(B)>10*sparsity_tol)
+    nonzero_indices_rec = (np.apply_along_axis(np.linalg.norm, 1, X_rec)/np.sqrt(B)>sparsity_tol)
     
     dict_observables = {
                 'rel_err': cvx.norm(X_true-X_rec, "fro").value/cvx.norm(X_true, "fro").value,
+                'rel_err_measurements': cvx.norm(Y_true-Y_rec, "fro").value/cvx.norm(Y_true, "fro").value,
                 'avg_err': cvx.norm(X_true - X_rec, "fro").value/np.sqrt(N*B),
+                'avg_err_measurements': cvx.norm(Y_true - Y_rec, "fro").value/np.sqrt(n*B),
                 'max_row_err': cvx.mixed_norm(X_true - X_rec, 2, np.inf).value/np.sqrt(B),
+                'max_row_err_measurements': cvx.mixed_norm(Y_true - Y_rec, 2, np.inf).value/np.sqrt(B),
                 'norm_2_1_true': cvx.mixed_norm(X_true, 2, 1).value/(N*np.sqrt(B)),
                 'norm_2_1_rec': cvx.mixed_norm(X_rec, 2, 1).value/(N*np.sqrt(B)),
                 'norm_2_2_true': cvx.mixed_norm(X_true, 2, 2).value/np.sqrt(N*B),
                 'norm_2_2_rec': cvx.mixed_norm(X_rec, 2, 2).value/np.sqrt(N*B),
                 'norm_2_infty_true': cvx.mixed_norm(X_true, 2, np.inf).value/np.sqrt(B),
                 'norm_2_infty_rec': cvx.mixed_norm(X_rec, 2, np.inf).value/np.sqrt(B),
-                'soft_sparsity': np.mean(np.apply_along_axis(np.linalg.norm, 1, X_rec)/np.sqrt(B) > 10*sparsity_tol),
-                'nonzero_rows_rec': np.sum(np.apply_along_axis(np.linalg.norm, 1, X_rec)/np.sqrt(B) > 10*sparsity_tol),
+                'soft_sparsity': np.mean(np.apply_along_axis(np.linalg.norm, 1, X_rec)/np.sqrt(B) > sparsity_tol),
+                'nonzero_rows_rec': np.sum(np.apply_along_axis(np.linalg.norm, 1, X_rec)/np.sqrt(B) > sparsity_tol),
                 'tpr': sum(zero_indices_true * zero_indices_rec)/max(1, sum(zero_indices_true)),
-                'tnr': sum(nonzero_indices_true * nonzero_indices_rec)/max(1, sum(nonzero_indices_true))
+                'tnr': sum(nonzero_indices_true * nonzero_indices_rec)/max(1, sum(nonzero_indices_true)),
+                'norm_2_1_true_measurements': cvx.mixed_norm(Y_true, 2, 1).value/(n*np.sqrt(B)),
+                'norm_2_1_rec_measurements': cvx.mixed_norm(Y_rec, 2, 1).value/(n*np.sqrt(B)),
+                'norm_2_2_true_measurements': cvx.mixed_norm(Y_true, 2, 2).value/np.sqrt(n*B),
+                'norm_2_2_rec_measurements': cvx.mixed_norm(Y_rec, 2, 2).value/np.sqrt(n*B),
+                'norm_2_infty_true_measurements': cvx.mixed_norm(Y_true, 2, np.inf).value/np.sqrt(B),
+                'norm_2_infty_rec_measurements': cvx.mixed_norm(Y_rec, 2, np.inf).value/np.sqrt(B)
                 }
     
     return dict_observables
@@ -388,7 +401,7 @@ def run_amp_instance(**dict_params):
     signal_true = np.array(signal_true)
    
     A = gen_iid_normal_mtx(n, N, rng)/np.sqrt(n)
-    Y = np.matmul(A, signal_true)
+    Y_true = np.matmul(A, signal_true)
     
     sparsity = k/N
     dict_params['sparsity'] = sparsity
@@ -401,11 +414,13 @@ def run_amp_instance(**dict_params):
     iter_count = 0
     
     signal_denoised_current = np.zeros((N, B), dtype = float)
-    Residual_current = Y
+    Residual_current = Y_true
     
     dict_observables = recovery_stats(signal_true,
                                signal_denoised_current,
-                               sparsity_tol)
+                               sparsity_tol,
+                               A,
+                               Y_true)
     rel_err = dict_observables['rel_err']
     # rec_stats_dict['iter_count'] = iter_count
     min_rel_err = rel_err
@@ -429,14 +444,14 @@ def run_amp_instance(**dict_params):
         if np.all(D > 0):
             tau = tau_nominal
             noise_cov_current_inv = np.matmul(U * 1.0/D, U.T)
-            dict_current = amp_iteration_nonsingular(A, Y, signal_denoised_current, Residual_current, tau, noise_cov_current_inv)
+            dict_current = amp_iteration_nonsingular(A, Y_true, signal_denoised_current, Residual_current, tau, noise_cov_current_inv)
         else:
             nonzero_indices = (D > 0)
             nonzero_indices_int = np.where(nonzero_indices)[0]
             zero_indices_int = np.where(~nonzero_indices)[0]
             tau = minimax_tau_threshold(sparsity, sum(nonzero_indices))
             D_nonzero_inv = 1/D[nonzero_indices_int]
-            dict_current = amp_iteration_singular(A, Y, 
+            dict_current = amp_iteration_singular(A, Y_true, 
                                                   signal_denoised_current, 
                                                   Residual_current, 
                                                   tau, U, nonzero_indices_int, zero_indices_int, D_nonzero_inv)
@@ -445,11 +460,14 @@ def run_amp_instance(**dict_params):
         Residual_current = dict_current['Residual_current']
         dict_observables = recovery_stats(signal_true,
                                    signal_denoised_current,
-                                   sparsity_tol)
+                                   sparsity_tol,
+                                   A,
+                                   Y_true)
         rel_err = dict_observables['rel_err']
         min_rel_err = min(rel_err, min_rel_err)
         tock = time.perf_counter() - tick
         if iter_count % 50 == 0:
+            dict_observables['avg_trace_resid_cov'] = np.mean(D)
             dict_observables['min_rel_err'] = min_rel_err
             dict_observables['iter_count'] = iter_count
             dict_observables['time_seconds'] = round(tock, 2)
@@ -457,6 +475,7 @@ def run_amp_instance(**dict_params):
             output_df = add_row_to_df(combined_dict, output_df)
 
     if iter_count % 50 != 0:
+        dict_observables['avg_trace_resid_cov'] = np.mean(D)
         dict_observables['min_rel_err'] = min_rel_err
         dict_observables['iter_count'] = iter_count
         dict_observables['time_seconds'] = round(tock, 2)
@@ -575,4 +594,3 @@ if __name__ == '__main__':
     # do_test_exp()
     # do_test()
     # run_block_bp_experiment('block_bp_inputs.json')
-
