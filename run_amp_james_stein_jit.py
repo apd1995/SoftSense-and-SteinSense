@@ -9,8 +9,10 @@ Created on Thu Oct 19 02:10:26 2023
 import numpy as np
 from numpy.random import Generator
 import cvxpy as cvx
-from pandas import DataFrame
+from pandas import DataFrame, concat
 import time
+# import amp_iteration as amp
+# from minimax_tau_threshold import minimax_tau_threshold
 
 from EMS.manager import do_on_cluster, get_gbq_credentials, do_test_experiment, read_json, unroll_experiment
 from dask.distributed import Client, LocalCluster
@@ -122,7 +124,8 @@ def james_stein_singular_vec(y,
 
 
 
-def james_stein_singular(X, Sigma_eigvecs, nonzero_indices_int, zero_indices_int, Sigma_nonzero_eigvals_inv):
+def james_stein_singular(X, Sigma_eigvecs,
+                         nonzero_indices_int, zero_indices_int, Sigma_nonzero_eigvals_inv):
     # changing coordinates to get uncorrelated components
     X_indep = np.matmul(X, Sigma_eigvecs)
     
@@ -172,16 +175,14 @@ def update_signal_denoised_singular(signal_noisy_current: float,
 @jax.jit
 def james_stein_onsager_nonsingular(X,
                                     Z,
-                                    Sigma_inv,
-                                    selected_rows,
-                                    selected_rows_frac):
+                                    Sigma_inv):
     X = jnp.array(X)
     dd_jacobian = jax.jacfwd(james_stein_nonsingular_vec, argnums=0)
     # dd_jacobian = jax.jit(jax.jacfwd(james_stein_nonsingular_vec, argnums=0))
     jac_vectorized = jax.vmap(dd_jacobian, in_axes = (0, None))
     sum_jacobians = jac_vectorized(X, Sigma_inv).sum(axis = 0)
     onsager_term = jnp.matmul(Z, sum_jacobians.T)
-    return onsager_term / (Z.shape[0] * selected_rows_frac)
+    return onsager_term / Z.shape[0]
   
     
 @jax.jit
@@ -190,9 +191,7 @@ def james_stein_onsager_singular(X,
                                  Sigma_eigvecs,
                                  nonzero_indices_int,
                                  zero_indices_int,
-                                 Sigma_nonzero_eigvals_inv,
-                                 selected_rows,
-                                 selected_rows_frac):
+                                 Sigma_nonzero_eigvals_inv):
     X = jnp.array(X)
     # selected_rows = rng.choice(X.shape[0], int(selected_rows_frac*X.shape[0]), replace = False)
     dd_jacobian = jax.jacfwd(james_stein_singular_vec, argnums=0)
@@ -200,18 +199,18 @@ def james_stein_onsager_singular(X,
     jac_vectorized = jax.vmap(dd_jacobian, in_axes = (0, None, None, None, None))
     sum_jacobians = jac_vectorized(X, Sigma_eigvecs, nonzero_indices_int, zero_indices_int, Sigma_nonzero_eigvals_inv).sum(axis = 0)
     onsager_term = jnp.matmul(Z, sum_jacobians.T)
-    return onsager_term / (Z.shape[0] * selected_rows_frac)
+    return onsager_term / Z.shape[0]
 
 
-def warm_up():
-    y = np.ones(5, dtype = float)
-    Sigma_inv = np.eye(5, dtype = float)
-    res1 = james_stein_nonsingular_vec(y, Sigma_inv)
-    res2 = james_stein_diagonal_vec(y, np.ones(5, dtype = float))
-    res3 = james_stein_singular_vec(y, Sigma_inv, np.array([0,1,2]), np.array([3,4]), np.ones(3, dtype = float))
-    res4 = james_stein_onsager_nonsingular(np.ones((1000,5), dtype = float), Sigma_inv, Sigma_inv, np.array([0]), 1.0)
-    res5 = james_stein_onsager_singular(np.ones((1000,5), dtype = float), Sigma_inv, Sigma_inv, np.array([0,1,2]), np.array([3,4]), np.ones(3, dtype = float), np.array([0]), 1.0)
-    return True
+# def warm_up():
+#     y = np.ones(5, dtype = float)
+#     Sigma_inv = np.eye(5, dtype = float)
+#     res1 = james_stein_nonsingular_vec(y, Sigma_inv)
+#     res2 = james_stein_diagonal_vec(y, np.ones(5, dtype = float))
+#     res3 = james_stein_singular_vec(y, Sigma_inv, np.array([0,1,2]), np.array([3,4]), np.ones(3, dtype = float))
+#     res4 = james_stein_onsager_nonsingular(np.ones((1000,5), dtype = float), Sigma_inv, Sigma_inv, np.array([0]), 1.0)
+#     res5 = james_stein_onsager_singular(np.ones((1000,5), dtype = float), Sigma_inv, Sigma_inv, np.array([0,1,2]), np.array([3,4]), np.ones(3, dtype = float), np.array([0]), 1.0)
+#     return True
     
 
 def update_residual_singular(A: float,
@@ -222,18 +221,14 @@ def update_residual_singular(A: float,
                              noise_cov_current_eigvecs: float,
                              noise_cov_current_nonzero_indices_int,
                              noise_cov_current_zero_indices_int,
-                             noise_cov_current_nonzero_eigvals_inv: float,
-                             selected_rows,
-                             selected_rows_frac):
+                             noise_cov_current_nonzero_eigvals_inv: float):
     naive_residual = Y - np.matmul(A, signal_denoised_current)
     onsager_term_ = james_stein_onsager_singular(signal_noisy_current,
                                                          Residual_prev,
                                                          noise_cov_current_eigvecs,
                                                          noise_cov_current_nonzero_indices_int,
                                                          noise_cov_current_zero_indices_int,
-                                                         noise_cov_current_nonzero_eigvals_inv,
-                                                         selected_rows,
-                                                         selected_rows_frac)
+                                                         noise_cov_current_nonzero_eigvals_inv)
     return naive_residual + onsager_term_
 
 
@@ -242,15 +237,11 @@ def update_residual_nonsingular(A: float,
                                 signal_noisy_current: float,
                                 signal_denoised_current: float,
                                 Residual_prev: float,
-                                noise_cov_current_inv: float,
-                                selected_rows,
-                                selected_rows_frac):
+                                noise_cov_current_inv: float):
     naive_residual = Y - np.matmul(A, signal_denoised_current)
     onsager_term_ = james_stein_onsager_nonsingular(signal_noisy_current,
                                                             Residual_prev,
-                                                            noise_cov_current_inv,
-                                                            selected_rows,
-                                                            selected_rows_frac)
+                                                            noise_cov_current_inv)
     return naive_residual + onsager_term_
 
 
@@ -258,9 +249,7 @@ def amp_iteration_nonsingular(A: float,
                               Y: float,
                               signal_denoised_prev: float,
                               Residual_prev: float,
-                              noise_cov_current_inv: float,
-                              selected_rows,
-                              selected_rows_frac):
+                              noise_cov_current_inv: float):
     signal_noisy_current = update_signal_noisy(A, signal_denoised_prev, Residual_prev)
     # noise_cov_current = Residual_prev.T @ Residual_prev/A.shape[0]
     signal_denoised_current = update_signal_denoised_nonsingular(signal_noisy_current, noise_cov_current_inv)
@@ -269,9 +258,7 @@ def amp_iteration_nonsingular(A: float,
                                                    signal_noisy_current,
                                                    signal_denoised_current,
                                                    Residual_prev,
-                                                   noise_cov_current_inv,
-                                                   selected_rows,
-                                                   selected_rows_frac)
+                                                   noise_cov_current_inv)
     return {'signal_denoised_current': signal_denoised_current,
             'Residual_current': Residual_current}
 
@@ -283,9 +270,7 @@ def amp_iteration_singular(A: float,
                            noise_cov_current_eigvecs: float,
                            noise_cov_current_nonzero_indices_int,
                            noise_cov_current_zero_indices_int,
-                           noise_cov_current_nonzero_eigvals_inv: float,
-                           selected_rows,
-                           selected_rows_frac):
+                           noise_cov_current_nonzero_eigvals_inv: float):
     signal_noisy_current = update_signal_noisy(A, signal_denoised_prev, Residual_prev)
     # noise_cov_current = Residual_prev.T @ Residual_prev/A.shape[0]
     signal_denoised_current = update_signal_denoised_singular(signal_noisy_current, noise_cov_current_eigvecs,
@@ -295,16 +280,15 @@ def amp_iteration_singular(A: float,
     Residual_current = update_residual_singular(A, Y, signal_noisy_current, signal_denoised_current, Residual_prev,
                                                 noise_cov_current_eigvecs, noise_cov_current_nonzero_indices_int,
                                                 noise_cov_current_zero_indices_int,
-                                                noise_cov_current_nonzero_eigvals_inv,
-                                                selected_rows, selected_rows_frac)
+                                                noise_cov_current_nonzero_eigvals_inv)
     return {'signal_denoised_current': signal_denoised_current,
             'Residual_current': Residual_current}
 
 
-def warm_up_2():
-    res1 = amp_iteration_nonsingular(np.eye(1000), np.eye(1000), 2*np.eye(1000), np.eye(1000), np.eye(1000), np.array([0]), 1.0)
-    res2 = amp_iteration_singular(np.eye(3), np.eye(3), 2*np.eye(3), np.eye(3), np.eye(3), np.arange(2), np.array([2]), np.ones(2, dtype = float), np.array([0]), 1.0)
-    return True
+# def warm_up_2():
+#     res1 = amp_iteration_nonsingular(np.eye(1000), np.eye(1000), 2*np.eye(1000), np.eye(1000), np.eye(1000), np.array([0]), 1.0)
+#     res2 = amp_iteration_singular(np.eye(3), np.eye(3), 2*np.eye(3), np.eye(3), np.eye(3), np.arange(2), np.array([2]), np.ones(2, dtype = float), np.array([0]), 1.0)
+#     return True
 
 
 def gen_iid_normal_mtx(num_measurements, signal_nrow, rng):
@@ -329,33 +313,50 @@ def gen_iid_normal_mtx(num_measurements, signal_nrow, rng):
 
 def recovery_stats(X_true: float,
               X_rec: float,
-              sparsity_tol: float):
+              sparsity_tol: float,
+              A: np.ndarray,
+              Y_true: np.ndarray):
     
     N, B = X_true.shape
+    n = Y_true.shape[0]
+    Y_rec = np.matmul(A, X_rec)
 
     zero_indices_true = (np.apply_along_axis(np.linalg.norm, 1, X_true)==0)
-    zero_indices_rec = (np.apply_along_axis(np.linalg.norm, 1, X_rec)/np.sqrt(B)<=10*sparsity_tol)
+    zero_indices_rec = (np.apply_along_axis(np.linalg.norm, 1, X_rec)/np.sqrt(B)<=sparsity_tol)
 
     nonzero_indices_true = (np.apply_along_axis(np.linalg.norm, 1, X_true)!=0)
-    nonzero_indices_rec = (np.apply_along_axis(np.linalg.norm, 1, X_rec)/np.sqrt(B)>10*sparsity_tol)
+    nonzero_indices_rec = (np.apply_along_axis(np.linalg.norm, 1, X_rec)/np.sqrt(B)>sparsity_tol)
     
     dict_observables = {
                 'rel_err': cvx.norm(X_true-X_rec, "fro").value/cvx.norm(X_true, "fro").value,
+                'rel_err_measurements': cvx.norm(Y_true-Y_rec, "fro").value/cvx.norm(Y_true, "fro").value,
                 'avg_err': cvx.norm(X_true - X_rec, "fro").value/np.sqrt(N*B),
+                'avg_err_measurements': cvx.norm(Y_true - Y_rec, "fro").value/np.sqrt(n*B),
                 'max_row_err': cvx.mixed_norm(X_true - X_rec, 2, np.inf).value/np.sqrt(B),
+                'max_row_err_measurements': cvx.mixed_norm(Y_true - Y_rec, 2, np.inf).value/np.sqrt(B),
                 'norm_2_1_true': cvx.mixed_norm(X_true, 2, 1).value/(N*np.sqrt(B)),
                 'norm_2_1_rec': cvx.mixed_norm(X_rec, 2, 1).value/(N*np.sqrt(B)),
                 'norm_2_2_true': cvx.mixed_norm(X_true, 2, 2).value/np.sqrt(N*B),
                 'norm_2_2_rec': cvx.mixed_norm(X_rec, 2, 2).value/np.sqrt(N*B),
                 'norm_2_infty_true': cvx.mixed_norm(X_true, 2, np.inf).value/np.sqrt(B),
                 'norm_2_infty_rec': cvx.mixed_norm(X_rec, 2, np.inf).value/np.sqrt(B),
-                'soft_sparsity': np.mean(np.apply_along_axis(np.linalg.norm, 1, X_rec)/np.sqrt(B) > 10*sparsity_tol),
-                'nonzero_rows_rec': np.sum(np.apply_along_axis(np.linalg.norm, 1, X_rec)/np.sqrt(B) > 10*sparsity_tol),
+                'soft_sparsity': np.mean(np.apply_along_axis(np.linalg.norm, 1, X_rec)/np.sqrt(B) > sparsity_tol),
+                'nonzero_rows_rec': np.sum(np.apply_along_axis(np.linalg.norm, 1, X_rec)/np.sqrt(B) > sparsity_tol),
                 'tpr': sum(zero_indices_true * zero_indices_rec)/max(1, sum(zero_indices_true)),
-                'tnr': sum(nonzero_indices_true * nonzero_indices_rec)/max(1, sum(nonzero_indices_true))
+                'tnr': sum(nonzero_indices_true * nonzero_indices_rec)/max(1, sum(nonzero_indices_true)),
+                'norm_2_1_true_measurements': cvx.mixed_norm(Y_true, 2, 1).value/(n*np.sqrt(B)),
+                'norm_2_1_rec_measurements': cvx.mixed_norm(Y_rec, 2, 1).value/(n*np.sqrt(B)),
+                'norm_2_2_true_measurements': cvx.mixed_norm(Y_true, 2, 2).value/np.sqrt(n*B),
+                'norm_2_2_rec_measurements': cvx.mixed_norm(Y_rec, 2, 2).value/np.sqrt(n*B),
+                'norm_2_infty_true_measurements': cvx.mixed_norm(Y_true, 2, np.inf).value/np.sqrt(B),
+                'norm_2_infty_rec_measurements': cvx.mixed_norm(Y_rec, 2, np.inf).value/np.sqrt(B)
                 }
     
     return dict_observables
+
+
+def add_row_to_df(dict_to_add, df):
+    return concat([df, DataFrame(dict_to_add, index = [0])], ignore_index=True)
 
 
 def run_amp_instance(**dict_params):
@@ -369,121 +370,98 @@ def run_amp_instance(**dict_params):
     sparsity_tol = dict_params['sparsity_tol']
     max_iter = dict_params['max_iter']
     err_explosion_tol = dict_params['err_explosion_tol']
-    selected_rows_frac = dict_params['selected_rows_frac']
-
+    
     iter_count = 0
     
     rng = np.random.default_rng(seed=seed(iter_count, k, n, N, B, err_tol, mc, sparsity_tol))
     signal_true = np.zeros((N, B), dtype=float)
     nonzero_indices = rng.choice(range(N), k, replace=False)
-    # signal_true[nonzero_indices, :] = rng.normal(0, 1, (k, B))
-    signal_true[nonzero_indices, :] = rng.poisson(2, (k, B))
+    signal_true[nonzero_indices, :] = rng.normal(0, 1, (k, B))
+    # signal_true[nonzero_indices, :] = rng.poisson(2, (k, B))
     signal_true = np.array(signal_true)
    
     A = gen_iid_normal_mtx(n, N, rng)/np.sqrt(n)
-    Y = np.matmul(A, signal_true)
+    Y_true = np.matmul(A, signal_true)
     
     sparsity = k/N
     dict_params['sparsity'] = sparsity
     dict_params['undersampling_ratio'] = n/N
     
-    tick = time.perf_counter()
+    output_df = None
+    
+    iter_count = 0
     
     signal_denoised_current = np.zeros((N, B), dtype = float)
-    Residual_current = Y
+    Residual_current = Y_true
     
     dict_observables = recovery_stats(signal_true,
                                signal_denoised_current,
-                               sparsity_tol)
+                               sparsity_tol,
+                               A,
+                               Y_true)
     rel_err = dict_observables['rel_err']
+    # rec_stats_dict['iter_count'] = iter_count
     min_rel_err = rel_err
-    # noise_cov_current = np.matmul(Residual_current.T, Residual_current)/n
-    # noise_cov_current_cov = np.cov(Residual_current.T)
     
-    start_time_iteration_1 = time.perf_counter()
-    iter_count = iter_count + 1
-
-    rng = np.random.default_rng(seed=seed(iter_count, k, n, N, B, err_tol, mc, sparsity_tol))
-
-    signal_denoised_prev = signal_denoised_current
-    signal_denoised_current = None
-    Residual_prev = Residual_current
-    Residual_current = None
-    # noise_cov_current = np.matmul(Residual_prev.T, Residual_prev)/n
-    noise_cov_current = np.cov(Residual_prev.T)
-    # noise_cov_current_diag = np.diag(np.var(Residual_prev, axis = 0))
-    selected_rows = rng.choice(N, int(selected_rows_frac*N), replace = False)
-    
-    D, U = np.linalg.eigh(noise_cov_current)
-    D = np.round(D, 10)
-    
-    if np.all(D > 0):
-        noise_cov_current_inv = np.matmul(U * 1.0/D, U.T)
-        dict_current = amp_iteration_nonsingular(A, Y, signal_denoised_prev, Residual_prev, noise_cov_current_inv, selected_rows, selected_rows_frac)
-    else:
-        nonzero_indices = (D > 0)
-        nonzero_indices_int = np.where(nonzero_indices)[0]
-        zero_indices_int = np.where(~nonzero_indices)[0]
-        D_nonzero_inv = 1/D[nonzero_indices_int]
-        dict_current = amp_iteration_singular(A, Y, signal_denoised_prev, Residual_prev, U, nonzero_indices_int, zero_indices_int, D_nonzero_inv, selected_rows, selected_rows_frac)
-    
-    signal_denoised_current = dict_current['signal_denoised_current']
-    Residual_current = dict_current['Residual_current']
-    
-    dict_observables = recovery_stats(signal_true,
-                               signal_denoised_current,
-                               sparsity_tol)
-    rel_err = dict_observables['rel_err']
-    min_rel_err = min(rel_err, min_rel_err)
-    end_time_iteration_1 = time.perf_counter()
-
-    start_time_iteration_2_onwards = time.perf_counter()
-    while iter_count<max_iter and rel_err>100*err_tol and rel_err<err_explosion_tol:
+    while iter_count<max_iter and rel_err>err_tol and rel_err<err_explosion_tol:
+        tick = time.perf_counter()
+        
         iter_count = iter_count + 1
 
-        rng = np.random.default_rng(seed=seed(iter_count, k, n, N, B, err_tol, mc, sparsity_tol))
-
-        signal_denoised_prev = signal_denoised_current
-        signal_denoised_current = None
-        Residual_prev = Residual_current
-        Residual_current = None
+        # signal_denoised_prev = signal_denoised_current
+        # signal_denoised_current = None
+        # Residual_prev = Residual_current
+        # Residual_current = None
         # noise_cov_current = np.matmul(Residual_prev.T, Residual_prev)/n
-        noise_cov_current = np.cov(Residual_prev.T)
+        noise_cov_current = np.cov(Residual_current.T)
         # noise_cov_current_diag = np.diag(np.var(Residual_prev, axis = 0))
-        selected_rows = rng.choice(N, int(selected_rows_frac*N), replace = False)
         
         D, U = np.linalg.eigh(noise_cov_current)
         D = np.round(D, 10)
         
         if np.all(D > 0):
             noise_cov_current_inv = np.matmul(U * 1.0/D, U.T)
-            dict_current = amp_iteration_nonsingular(A, Y, signal_denoised_prev, Residual_prev, noise_cov_current_inv, selected_rows, selected_rows_frac)
+            dict_current = amp_iteration_nonsingular(A, Y_true, 
+                                                     signal_denoised_current,
+                                                     Residual_current, noise_cov_current_inv)
         else:
             nonzero_indices = (D > 0)
             nonzero_indices_int = np.where(nonzero_indices)[0]
             zero_indices_int = np.where(~nonzero_indices)[0]
             D_nonzero_inv = 1/D[nonzero_indices_int]
-            dict_current = amp_iteration_singular(A, Y, signal_denoised_prev, Residual_prev, U, nonzero_indices_int, zero_indices_int, D_nonzero_inv, selected_rows, selected_rows_frac)
+            dict_current = amp_iteration_singular(A, Y_true, 
+                                                  signal_denoised_current, 
+                                                  Residual_current, 
+                                                  U, nonzero_indices_int, zero_indices_int, D_nonzero_inv)
         
         signal_denoised_current = dict_current['signal_denoised_current']
         Residual_current = dict_current['Residual_current']
-        
         dict_observables = recovery_stats(signal_true,
                                    signal_denoised_current,
-                                   sparsity_tol)
+                                   sparsity_tol,
+                                   A,
+                                   Y_true)
         rel_err = dict_observables['rel_err']
         min_rel_err = min(rel_err, min_rel_err)
-    
-    end_time_iteration_2_onwards = time.perf_counter()
-    tock = time.perf_counter() - tick
-    dict_observables['min_rel_err'] = min_rel_err
-    dict_observables['iter_count'] = iter_count
-    dict_observables['time_iteration_1'] = round(end_time_iteration_1 - start_time_iteration_1, 2)
-    dict_observables['time_iteration_2_onwards'] = round(end_time_iteration_2_onwards - start_time_iteration_2_onwards, 2)
-    dict_observables['time_seconds'] = round(tock, 2)
+        tock = time.perf_counter() - tick
+        if iter_count % 50 == 0:
+            dict_observables['avg_trace_resid_cov'] = np.mean(D)
+            dict_observables['min_rel_err'] = min_rel_err
+            dict_observables['iter_count'] = iter_count
+            dict_observables['time_seconds'] = round(tock, 2)
+            combined_dict = {**dict_params, **dict_observables}
+            output_df = add_row_to_df(combined_dict, output_df)
+
+    if iter_count % 50 != 0:
+        dict_observables['avg_trace_resid_cov'] = np.mean(D)
+        dict_observables['min_rel_err'] = min_rel_err
+        dict_observables['iter_count'] = iter_count
+        dict_observables['time_seconds'] = round(tock, 2)
+        combined_dict = {**dict_params, **dict_observables}
+        output_df = add_row_to_df(combined_dict, output_df)
 
     #return DataFrame(data = {**dict_params, **dict_observables}).set_index('iter_count')
-    return DataFrame(data = {**dict_params, **dict_observables}, index = [0])
+    return output_df
 
 
 def test_experiment() -> dict:
@@ -559,7 +537,7 @@ def do_local_experiment():
 
 def read_and_do_local_experiment(json_file: str):
     exp = read_json(json_file)
-    with LocalCluster(dashboard_address='localhost:8787', n_workers=18) as cluster:
+    with LocalCluster(dashboard_address='localhost:8787', n_workers=32) as cluster:
         with Client(cluster) as client:
             # do_on_cluster(exp, run_amp_instance, client, credentials=None)
             do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
@@ -588,9 +566,9 @@ def count_params(json_file: str):
 
 if __name__ == '__main__':
     # do_local_experiment()
-    read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_JS_approx_jacobian_poisson_jit.json')
+    read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_JS_normal_jit.json')
     # count_params('updated_undersampling_int_grids.json')
-    # do_coiled_experiment('exp_dicts/AMP_matrix_recovery_JS_approx_jacobian_poisson_jit.json')
+    # do_coiled_experiment('exp_dicts/AMP_matrix_recovery_JS_normal_jit.json')
     # do_test_exp()
     # do_test()
     # run_block_bp_experiment('block_bp_inputs.json')
