@@ -532,7 +532,7 @@ def do_coiled_experiment(json_file: str):
     exp = read_json(json_file)
     # logging.info(f'{json.dumps(dask.config.config, indent=4)}')
     software_environment = 'adonoho/amp_matrix_recovery'
-    coiled.delete_software_environment(name=software_environment)
+    # coiled.delete_software_environment(name=software_environment)
     logging.info('Creating environment.')
     coiled.create_software_environment(
         name=software_environment,
@@ -542,7 +542,7 @@ def do_coiled_experiment(json_file: str):
         ]
     )
     with coiled.Cluster(software=software_environment,
-                        n_workers=320, worker_vm_types=['n1-standard-1'],
+                        n_workers=500, worker_vm_types=['n1-standard-1'],
                         use_best_zone=True, spot_policy='spot') as cluster:
         with Client(cluster) as client:
             do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
@@ -588,9 +588,9 @@ def count_params(json_file: str):
 
 if __name__ == '__main__':
     # do_local_experiment()
-    read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_blocksoft_normal_jit.json')
+    # read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_blocksoft_normal_jit.json')
     # count_params('updated_undersampling_int_grids.json')
-    # do_coiled_experiment('exp_dicts/AMP_matrix_recovery_blocksoft_normal_jit.json')
+    do_coiled_experiment('exp_dicts/AMP_matrix_recovery_blocksoft_normal_jit.json')
     # do_test_exp()
     # do_test()
     # run_block_bp_experiment('block_bp_inputs.json')
