@@ -73,7 +73,7 @@ def normal_bayes_vec(y: np.ndarray,
     num = sparsity*multivariate_normal.pdf(y, mean = signal_mean_vec, cov = signal_cov + noise_cov)
     deno = num + (1-sparsity)*multivariate_normal.pdf(y, mean = jnp.zeros_like(signal_mean_vec), cov = noise_cov)
     conditional_nonzero_prob = jax.lax.cond(deno > 0,
-                                            lambda _: num/(num + deno),
+                                            lambda _: num/deno,
                                             lambda _: 1.,
                                             None)
     return conditional_nonzero_prob*nonzero_bayes
