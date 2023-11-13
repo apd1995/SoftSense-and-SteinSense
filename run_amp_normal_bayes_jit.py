@@ -435,11 +435,11 @@ def test_experiment() -> dict:
 
 def do_sherlock_experiment(json_file: str):
     exp = read_json(json_file)
-    cores = 320
+    nodes = 64
     with SLURMCluster(queue='normal,owners,donoho,hns,stat',
-                      cores=cores, memory='4GiB', processes=1,
+                      cores=1, memory='4GiB', processes=1,
                       walltime='24:00:00') as cluster:
-        cluster.scale(cores)
+        cluster.scale(nodes)
         logging.info(cluster.job_script())
         with Client(cluster) as client:
             do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
