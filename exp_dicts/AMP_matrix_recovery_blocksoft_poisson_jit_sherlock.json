@@ -1,5 +1,5 @@
 {
-    "table_name": "AMP_matrix_recovery_blocksoft_normal_jit_sherlock",
+    "table_name": "AMP_matrix_recovery_blocksoft_poisson_jit_sherlock",
     "base_index": 0,
     "description": "Max iter = 5000. Performs 25 mc runs at integer undersampling point in the grid of half-width 0.1 around predicted undersampling point, with blocksoft denoiser. Sparsity varies in [0.05,...,0.95] with increment 0.05. No. of rows varies in [800, 1600] and no. of columns is 10. cov(resid) used to estimate the noise covariance at each iteration instead of resid.T * resid/n.",
     "db_url": "sqlite:///data/EMS.db3",
