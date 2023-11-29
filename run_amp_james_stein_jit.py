@@ -508,7 +508,7 @@ def test_experiment() -> dict:
 
 def do_sherlock_experiment(json_file: str):
     exp = read_json(json_file)
-    nodes = 800
+    nodes = 1000
     with SLURMCluster(queue='normal,owners,donoho,hns,stat',
                       cores=1, memory='4GiB', processes=1,
                       walltime='24:00:00') as cluster:
