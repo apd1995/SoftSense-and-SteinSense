@@ -379,7 +379,7 @@ def run_amp_instance(**dict_params):
     nonzero_indices = rng.choice(range(N), k, replace=False)
     # signal_true[nonzero_indices, :] = rng.normal(0, 1, (k, B))
     # signal_true[nonzero_indices, :] = rng.poisson(2, (k, B))
-    signal_true[nonzero_indices, :] = rng.poisson(2, (k, B))
+    signal_true[nonzero_indices, :] = rng.binomial(1, 0.5, (k, B))
     signal_true = np.array(signal_true)
    
     A = gen_iid_normal_mtx(n, N, rng)/np.sqrt(n)
