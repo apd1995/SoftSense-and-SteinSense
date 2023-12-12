@@ -17,7 +17,7 @@ from scipy.io import loadmat
 
 from EMS.manager import do_on_cluster, get_gbq_credentials, do_test_experiment, read_json, unroll_experiment
 from dask.distributed import Client, LocalCluster
-from dask_jobqueue import SLURMCluster
+# from dask_jobqueue import SLURMCluster
 import dask
 import coiled
 import logging
@@ -377,12 +377,12 @@ def get_wavelets(original_data, wavelet_level):
         
     wave_dat = list()
 
-    for slice in range(haar_dat.shape[0]):
-      haar_slice = haar_dat[slice, :, :]
+    for slice_idx in range(haar_dat.shape[0]):
+      haar_slice = haar_dat[slice_idx, :, :]
       coeffs = pywt.wavedec2(haar_slice, "db2", level = wavelet_level, mode = "periodization")
       wave_dat = wave_dat + [coeffs]
       
-      return wave_dat
+    return wave_dat
 
 
 def get_sparsified_array(original_array, prob_quantile):
@@ -405,7 +405,7 @@ def run_amp_instance(**dict_params):
     original_data = (loadmat('hyperspectral_data/Indian_pines.mat'))['indian_pines']
     wave_dat = get_wavelets(original_data, wavelet_level)
     
-    pooled_wavelets = np.array([wave_dat[slice][band][subband] for slice in range(len(wave_dat))])
+    pooled_wavelets = np.array([wave_dat[slice_idx][band][subband] for slice_idx in range(len(wave_dat))])
 
     prob_quantile = dict_params['prob_quantile']
     n = dict_params['num_measurements']
@@ -436,8 +436,6 @@ def run_amp_instance(**dict_params):
     dict_params['actual_block_sparsity'] = np.mean(np.sum(signal_true**2, axis = 1) != 0.)
     
     output_df = None
-    
-    iter_count = 0
     
     signal_denoised_current = np.zeros((N, B), dtype = float)
     Residual_current = Y_true
@@ -490,6 +488,7 @@ def run_amp_instance(**dict_params):
                                    A,
                                    Y_true)
         rel_err = dict_observables['rel_err']
+        print(rel_err)
         min_rel_err = min(rel_err, min_rel_err)
         tock = time.perf_counter() - tick
         if iter_count % 50 == 0:
@@ -513,13 +512,16 @@ def run_amp_instance(**dict_params):
 
 
 def test_experiment() -> dict:
-    exp = {'table_name':'amp-test',
+    exp = {'table_name':'amp-test-hyperspectral',
            'params': [{
-               'nonzero_rows': [30],
-               'num_measurements': [320],
-               'signal_nrow': [1000],
-               'signal_ncol': [5],
+               'prob_quantile': [0.1],
+               'num_measurements': [100],
+               'signal_nrow': [5329],
+               'signal_ncol': [10],
                'max_iter': [1],
+               'wavelet_level': [3],
+               'band': [0],
+               'subband': [0],
                'err_tol': [1e-5],
                'sparsity_tol': [1e-4],
                'err_explosion_tol': [100],
@@ -591,16 +593,16 @@ def do_local_experiment():
     logging.info(f'{json.dumps(dask.config.config, indent=4)}')
     with LocalCluster(dashboard_address='localhost:8787') as cluster:
         with Client(cluster) as client:
-            # do_on_cluster(exp, run_amp_instance, client, credentials=None)
-            do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
+            do_on_cluster(exp, run_amp_instance, client, credentials=None)
+            # do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
 
 
 def read_and_do_local_experiment(json_file: str):
     exp = read_json(json_file)
-    with LocalCluster(dashboard_address='localhost:8787', n_workers=32) as cluster:
+    with LocalCluster(dashboard_address='localhost:8787', n_workers=4) as cluster:
         with Client(cluster) as client:
-            # do_on_cluster(exp, run_amp_instance, client, credentials=None)
-            do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
+            do_on_cluster(exp, run_amp_instance, client, credentials=None)
+            # do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
 
 
 def do_test_exp():
@@ -626,10 +628,10 @@ def count_params(json_file: str):
 
 if __name__ == '__main__':
     # do_local_experiment()
-    # read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_JS_poisson_jit.json')
+    read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_JS_hyperspectral_indian_pines_sherlock.json')
     # count_params('updated_undersampling_int_grids.json')
     # do_coiled_experiment('exp_dicts/AMP_matrix_recovery_JS_poisson_jit.json')
-    do_sherlock_experiment('exp_dicts/AMP_matrix_recovery_JS_hyperspectral_indian_pines_sherlock.json')
+    # do_sherlock_experiment('exp_dicts/AMP_matrix_recovery_JS_hyperspectral_indian_pines_sherlock.json')
     # do_test_exp()
     # do_test()
     # run_block_bp_experiment('block_bp_inputs.json')
