@@ -12,6 +12,7 @@ dependencies:
   - google-auth
   - cvxpy
   - jax
+  - torch
   - dask
   - dask-jobqueue
   - coiled
