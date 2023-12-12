@@ -17,7 +17,7 @@ from scipy.io import loadmat
 
 from EMS.manager import do_on_cluster, get_gbq_credentials, do_test_experiment, read_json, unroll_experiment
 from dask.distributed import Client, LocalCluster
-# from dask_jobqueue import SLURMCluster
+from dask_jobqueue import SLURMCluster
 import dask
 import coiled
 import logging
@@ -628,10 +628,10 @@ def count_params(json_file: str):
 
 if __name__ == '__main__':
     # do_local_experiment()
-    read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_JS_hyperspectral_indian_pines_sherlock.json')
+    # read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_JS_hyperspectral_indian_pines_sherlock.json')
     # count_params('updated_undersampling_int_grids.json')
     # do_coiled_experiment('exp_dicts/AMP_matrix_recovery_JS_poisson_jit.json')
-    # do_sherlock_experiment('exp_dicts/AMP_matrix_recovery_JS_hyperspectral_indian_pines_sherlock.json')
+    do_sherlock_experiment('exp_dicts/AMP_matrix_recovery_JS_hyperspectral_indian_pines_sherlock.json')
     # do_test_exp()
     # do_test()
     # run_block_bp_experiment('block_bp_inputs.json')
