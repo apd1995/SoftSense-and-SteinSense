@@ -488,7 +488,6 @@ def run_amp_instance(**dict_params):
                                    A,
                                    Y_true)
         rel_err = dict_observables['rel_err']
-        print(rel_err)
         min_rel_err = min(rel_err, min_rel_err)
         tock = time.perf_counter() - tick
         if iter_count % 50 == 0:
