@@ -402,7 +402,7 @@ def run_amp_instance(**dict_params):
     band = int(dict_params['band'])
     subband = int(dict_params['subband'])
     
-    original_data = (loadmat('hyperspectral_data/Indian_pines.mat'))['indian_pines']
+    original_data = (loadmat('hyperspectral_data/datasets/Indian_pines.mat'))['indian_pines']
     wave_dat = get_wavelets(original_data, wavelet_level)
     
     pooled_wavelets = np.array([wave_dat[slice_idx][band][subband] for slice_idx in range(len(wave_dat))])
