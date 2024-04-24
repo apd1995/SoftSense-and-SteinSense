@@ -530,7 +530,7 @@ def do_coiled_experiment(json_file: str):
         name=software_environment,
         conda="environment-coiled.yml",
         pip=[
-            "git+https://GIT_TOKEN@github.com/adonoho/EMS.git"
+            "git+https://github.com/adonoho/EMS.git"
         ]
     )
     with coiled.Cluster(software=software_environment,
