@@ -172,41 +172,32 @@ def recovery_stats(X_true: float,
               X_rec: float,
               sparsity_tol: float,
               A: np.ndarray,
-              Y_true: np.ndarray):
+              Y_true: np.ndarray,
+              M, B):
     
-    N, B = X_true.shape
-    n = Y_true.shape[0]
-    Y_rec = np.matmul(A, X_rec)
+    X_true_mat = X_true.reshape((M, B))
+    X_rec_mat = X_rec.reshape((M, B))
 
-    zero_indices_true = (np.apply_along_axis(np.linalg.norm, 1, X_true)==0)
-    zero_indices_rec = (np.apply_along_axis(np.linalg.norm, 1, X_rec)/np.sqrt(B)<=sparsity_tol)
+    zero_blocks_true = (np.apply_along_axis(np.linalg.norm, 1, X_true_mat)==0)
+    zero_blocks_rec = (np.apply_along_axis(np.linalg.norm, 1, X_rec_mat)/np.sqrt(B)<=sparsity_tol)
 
-    nonzero_indices_true = (np.apply_along_axis(np.linalg.norm, 1, X_true)!=0)
-    nonzero_indices_rec = (np.apply_along_axis(np.linalg.norm, 1, X_rec)/np.sqrt(B)>sparsity_tol)
+    nonzero_blocks_true = (np.apply_along_axis(np.linalg.norm, 1, X_true_mat)!=0)
+    nonzero_blocks_rec = (np.apply_along_axis(np.linalg.norm, 1, X_rec_mat)/np.sqrt(B)>sparsity_tol)
     
     dict_observables = {
-                'rel_err': cvx.norm(X_true-X_rec, "fro").value/cvx.norm(X_true, "fro").value,
-                'rel_err_measurements': cvx.norm(Y_true-Y_rec, "fro").value/cvx.norm(Y_true, "fro").value,
-                'avg_err': cvx.norm(X_true - X_rec, "fro").value/np.sqrt(N*B),
-                'avg_err_measurements': cvx.norm(Y_true - Y_rec, "fro").value/np.sqrt(n*B),
-                'max_row_err': cvx.mixed_norm(X_true - X_rec, 2, np.inf).value/np.sqrt(B),
-                'max_row_err_measurements': cvx.mixed_norm(Y_true - Y_rec, 2, np.inf).value/np.sqrt(B),
-                'norm_2_1_true': cvx.mixed_norm(X_true, 2, 1).value/(N*np.sqrt(B)),
-                'norm_2_1_rec': cvx.mixed_norm(X_rec, 2, 1).value/(N*np.sqrt(B)),
-                'norm_2_2_true': cvx.mixed_norm(X_true, 2, 2).value/np.sqrt(N*B),
-                'norm_2_2_rec': cvx.mixed_norm(X_rec, 2, 2).value/np.sqrt(N*B),
-                'norm_2_infty_true': cvx.mixed_norm(X_true, 2, np.inf).value/np.sqrt(B),
-                'norm_2_infty_rec': cvx.mixed_norm(X_rec, 2, np.inf).value/np.sqrt(B),
-                'soft_sparsity': np.mean(np.apply_along_axis(np.linalg.norm, 1, X_rec)/np.sqrt(B) > sparsity_tol),
-                'nonzero_rows_rec': np.sum(np.apply_along_axis(np.linalg.norm, 1, X_rec)/np.sqrt(B) > sparsity_tol),
-                'tpr': sum(zero_indices_true * zero_indices_rec)/max(1, sum(zero_indices_true)),
-                'tnr': sum(nonzero_indices_true * nonzero_indices_rec)/max(1, sum(nonzero_indices_true)),
-                'norm_2_1_true_measurements': cvx.mixed_norm(Y_true, 2, 1).value/(n*np.sqrt(B)),
-                'norm_2_1_rec_measurements': cvx.mixed_norm(Y_rec, 2, 1).value/(n*np.sqrt(B)),
-                'norm_2_2_true_measurements': cvx.mixed_norm(Y_true, 2, 2).value/np.sqrt(n*B),
-                'norm_2_2_rec_measurements': cvx.mixed_norm(Y_rec, 2, 2).value/np.sqrt(n*B),
-                'norm_2_infty_true_measurements': cvx.mixed_norm(Y_true, 2, np.inf).value/np.sqrt(B),
-                'norm_2_infty_rec_measurements': cvx.mixed_norm(Y_rec, 2, np.inf).value/np.sqrt(B)
+                'rel_err': cvx.norm(X_true_mat-X_rec_mat, "fro").value/cvx.norm(X_true_mat, "fro").value,
+                'avg_err': cvx.norm(X_true_mat - X_rec_mat, "fro").value/np.sqrt(M*B),
+                'max_row_err': cvx.mixed_norm(X_true_mat - X_rec_mat, 2, np.inf).value/np.sqrt(B),
+                'norm_2_1_true': cvx.mixed_norm(X_true_mat, 2, 1).value/(M*np.sqrt(B)),
+                'norm_2_1_rec': cvx.mixed_norm(X_rec_mat, 2, 1).value/(M*np.sqrt(B)),
+                'norm_2_2_true': cvx.mixed_norm(X_true_mat, 2, 2).value/np.sqrt(M*B),
+                'norm_2_2_rec': cvx.mixed_norm(X_rec_mat, 2, 2).value/np.sqrt(M*B),
+                'norm_2_infty_true': cvx.mixed_norm(X_true_mat, 2, np.inf).value/np.sqrt(B),
+                'norm_2_infty_rec': cvx.mixed_norm(X_rec_mat, 2, np.inf).value/np.sqrt(B),
+                'soft_sparsity': np.mean(np.apply_along_axis(np.linalg.norm, 1, X_rec_mat)/np.sqrt(B) > sparsity_tol),
+                'nonzero_rows_rec': np.sum(np.apply_along_axis(np.linalg.norm, 1, X_rec_mat)/np.sqrt(B) > sparsity_tol),
+                'tpr': sum(zero_blocks_true * zero_blocks_rec)/max(1, sum(zero_blocks_true)),
+                'tnr': sum(nonzero_blocks_true * nonzero_blocks_rec)/max(1, sum(nonzero_blocks_true))
                 }
     
     return dict_observables
@@ -257,9 +248,8 @@ def run_amp_instance(**dict_params):
                                signal_denoised_current,
                                sparsity_tol,
                                A,
-                               Y_true)
+                               Y_true, M, B)
     rel_err = dict_observables['rel_err']
-    # rec_stats_dict['iter_count'] = iter_count
     min_rel_err = rel_err
     
     while iter_count<max_iter and rel_err>err_tol and rel_err<err_explosion_tol:
@@ -282,7 +272,7 @@ def run_amp_instance(**dict_params):
                                    signal_denoised_current,
                                    sparsity_tol,
                                    A,
-                                   Y_true)
+                                   Y_true, M, B)
         rel_err = dict_observables['rel_err']
         min_rel_err = min(rel_err, min_rel_err)
         tock = time.perf_counter() - tick
@@ -389,7 +379,7 @@ def do_local_experiment():
 
 def read_and_do_local_experiment(json_file: str):
     exp = read_json(json_file)
-    with LocalCluster(dashboard_address='localhost:8787', n_workers=32) as cluster:
+    with LocalCluster(dashboard_address='localhost:8787', n_workers=4) as cluster:
         with Client(cluster) as client:
             # do_on_cluster(exp, run_amp_instance, client, credentials=None)
             do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
@@ -418,7 +408,7 @@ def count_params(json_file: str):
 
 if __name__ == '__main__':
     # do_local_experiment()
-    # read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_JS_poisson_jit.json')
+    # read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_JS_normal_concatenated_daveUPenn.json')
     # count_params('updated_undersampling_int_grids.json')
     # do_coiled_experiment('exp_dicts/AMP_matrix_recovery_JS_poisson_jit.json')
     do_sherlock_experiment('exp_dicts/AMP_matrix_recovery_JS_normal_concatenated_daveUPenn.json')
