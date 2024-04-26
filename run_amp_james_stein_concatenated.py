@@ -79,6 +79,7 @@ def james_stein_full_vec(X, M, B, sigma_sq) -> np.ndarray:
     X_denoised = np.zeros_like(X, dtype = float)
     for block_idx in range(M):
         X_denoised[(block_idx*B):((block_idx + 1)*B)] = james_stein_block(X[(block_idx*B):((block_idx + 1)*B)], sigma_sq)
+    return X_denoised
 
 
 def update_signal_noisy(A: float,
@@ -108,15 +109,15 @@ def james_stein_onsager(X, M, B, noise_var, Z, n):
     return onsager_term
     
 
-def update_residual(A: float,
-                    Y: float,
-                    signal_noisy_current: float,
-                    signal_denoised_current: float,
-                    Residual_prev: float,
+def update_residual(A,
+                    Y,
+                    signal_noisy_current,
+                    signal_denoised_current,
+                    Residual_prev,
                     num_blocks,
                     block_size,
-                    noise_var_current: float):
-    naive_residual = Y - np.matmul(A, signal_denoised_current)
+                    noise_var_current):
+    naive_residual = Y - A @ signal_denoised_current
     onsager_term_ = james_stein_onsager(signal_noisy_current,
                                         num_blocks,
                                         block_size,
@@ -143,6 +144,8 @@ def amp_iteration(A: float,
                                     signal_noisy_current,
                                     signal_denoised_current,
                                     Residual_prev,
+                                    num_blocks,
+                                    block_size,
                                     noise_var_current)
     return {'signal_denoised_current': signal_denoised_current,
             'Residual_current': Residual_current}
@@ -259,12 +262,13 @@ def run_amp_instance(**dict_params):
 
         noise_var_current = np.var(Residual_current)
 
-        dict_current = amp_iteration(A, Y_true, 
-                                    signal_denoised_current,
-                                    Residual_current, 
-                                    M,
-                                    B,
-                                    noise_var_current)
+        dict_current = amp_iteration(A = A, 
+                                     Y = Y_true, 
+                                    signal_denoised_prev = signal_denoised_current,
+                                    Residual_prev = Residual_current, 
+                                    num_blocks = M,
+                                    block_size = B,
+                                    noise_var_current = noise_var_current)
         
         signal_denoised_current = dict_current['signal_denoised_current']
         Residual_current = dict_current['Residual_current']
@@ -337,7 +341,7 @@ def test_experiment() -> dict:
 
 def do_sherlock_experiment(json_file: str):
     exp = read_json(json_file)
-    nodes = 1000
+    nodes = 1500
     with SLURMCluster(queue='normal,owners,donoho,hns,stat',
                       cores=1, memory='4GiB', processes=1,
                       walltime='24:00:00') as cluster:
@@ -410,8 +414,8 @@ if __name__ == '__main__':
     # do_local_experiment()
     # read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_JS_normal_concatenated_daveUPenn.json')
     # count_params('updated_undersampling_int_grids.json')
-    # do_coiled_experiment('exp_dicts/AMP_matrix_recovery_JS_poisson_jit.json')
-    do_sherlock_experiment('exp_dicts/AMP_matrix_recovery_JS_normal_concatenated_daveUPenn.json')
+    do_coiled_experiment('exp_dicts/AMP_matrix_recovery_JS_normal_concatenated_daveUPenn.json')
+    # do_sherlock_experiment('exp_dicts/AMP_matrix_recovery_JS_normal_concatenated_daveUPenn.json')
     # do_test_exp()
     # do_test()
     # run_block_bp_experiment('block_bp_inputs.json')
