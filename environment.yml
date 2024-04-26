@@ -18,7 +18,7 @@ dependencies:
   - sqlalchemy
   - pip
   - pip:
-    - git+https://github.com/adonoho/EMS.git
+    - git+https://github.com/adonoho/EMS.git@v0.0.17
 variables:
   MKL_NUM_THREADS: '1'
   OPENBLAS_NUM_THREADS: '1'
