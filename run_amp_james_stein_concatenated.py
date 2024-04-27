@@ -356,7 +356,7 @@ def do_coiled_experiment(json_file: str):
     exp = read_json(json_file)
     # logging.info(f'{json.dumps(dask.config.config, indent=4)}')
     software_environment = 'adonoho/amp_matrix_recovery'
-    coiled.delete_software_environment(name=software_environment)
+    # coiled.delete_software_environment(name=software_environment)
     logging.info('Creating environment.')
     coiled.create_software_environment(
         name=software_environment,
@@ -366,7 +366,7 @@ def do_coiled_experiment(json_file: str):
         ]
     )
     with coiled.Cluster(software=software_environment,
-                        n_workers=500, worker_vm_types=['n1-standard-1'],
+                        n_workers=750, worker_vm_types=['n1-standard-1'],
                         use_best_zone=True, spot_policy='spot') as cluster:
         with Client(cluster) as client:
             do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
