@@ -386,11 +386,11 @@ def do_coiled_experiment(json_file: str):
         name=software_environment,
         conda="environment-coiled.yml",
         pip=[
-            "git+https://GIT_TOKEN@github.com/adonoho/EMS.git"
+            "git+https://github.com/adonoho/EMS.git@v0.0.17"
         ]
     )
     with coiled.Cluster(software=software_environment,
-                        n_workers=960, worker_vm_types=['n1-standard-1'],
+                        n_workers=750, worker_vm_types=['n1-standard-1'],
                         use_best_zone=True, spot_policy='spot') as cluster:
         with Client(cluster) as client:
             do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
@@ -438,8 +438,8 @@ if __name__ == '__main__':
     # do_local_experiment()
     # read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_JS_normal_concatenated_daveUPenn.json')
     # count_params('updated_undersampling_int_grids.json')
-    # do_coiled_experiment('exp_dicts/AMP_matrix_recovery_blocksoft_normal_concatenate_daveUPenn.json')
-    do_sherlock_experiment('exp_dicts/AMP_matrix_recovery_blocksoft_normal_concatenate_daveUPenn.json')
+    do_coiled_experiment('exp_dicts/AMP_matrix_recovery_blocksoft_normal_concatenate_daveUPenn.json')
+    # do_sherlock_experiment('exp_dicts/AMP_matrix_recovery_blocksoft_normal_concatenate_daveUPenn.json')
     # do_test_exp()
     # do_test()
     # run_block_bp_experiment('block_bp_inputs.json')
