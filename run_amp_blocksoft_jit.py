@@ -484,6 +484,17 @@ def run_amp_instance(**dict_params):
         combined_dict = {**dict_params, **dict_observables}
         output_df = add_row_to_df(combined_dict, output_df)
 
+    A = None
+    D = None
+    D_nonzero_inv = None
+    U = None
+    signal_true = None
+    Y_true = None
+    noise_cov_current = None
+    signal_denoised_current = None
+    Residual_current = None
+    noise_cov_current_inv = None
+
     #return DataFrame(data = {**dict_params, **dict_observables}).set_index('iter_count')
     return output_df
 
