@@ -11,8 +11,6 @@ from numpy.random import Generator
 import cvxpy as cvx
 from pandas import DataFrame, concat
 import time
-# import amp_iteration as amp
-# from minimax_tau_threshold import minimax_tau_threshold
 
 from EMS.manager import do_on_cluster, get_gbq_credentials, do_test_experiment, read_json, unroll_experiment
 from dask.distributed import Client, LocalCluster
