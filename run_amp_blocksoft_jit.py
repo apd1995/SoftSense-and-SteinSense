@@ -73,6 +73,22 @@ def seed(iter_count: int,
 
 @jax.jit
 def block_soft_thresholding_nonsingular_vec(y, tau, Sigma_inv):
+    """
+    Applies block soft thresholding on a vector y with noise precision Sigma_inv at threshold tau.
+
+    Parameters
+    ----------
+    Y : jnp.ndarray
+        Noisy signal.
+    tau : float
+        Threshold for block soft thresholding.
+    Sigma_inv : jnp.ndarray
+        Noise precision matrix.
+
+    Returns
+    -------
+    jnp.ndarray of same length as y.
+    """
     d = len(y)
     quad_whitening = jnp.dot(y, jnp.dot(Sigma_inv, y))
     return jax.lax.cond(quad_whitening > tau**2,
@@ -83,20 +99,20 @@ def block_soft_thresholding_nonsingular_vec(y, tau, Sigma_inv):
 
 def block_soft_thresholding_nonsingular(X: np.ndarray, tau: float, Sigma_inv: np.ndarray) -> np.ndarray:
     """
-    Applies block soft thresholding rowwise to denoise Y.
+    Applies block soft thresholding rowwise to denoise X.
 
     Parameters
     ----------
-    Y : anp.ndarray
+    Y : jnp.ndarray
         Noisy signal.
     tau : float
         Threshold for block soft thresholding.
-    Sigma_inv : anp.ndarray
+    Sigma_inv : jnp.ndarray
         Noise precision matrix.
 
     Returns
     -------
-    None.
+    np.ndarray of same dims as X
     """
     quad_whitening = np.sum(X * np.matmul(X, Sigma_inv), axis=1)
     block_soft_thresholding_coeff = np.where(quad_whitening > tau**2, 1 - (tau / np.sqrt(quad_whitening)), 0.0)
@@ -105,6 +121,9 @@ def block_soft_thresholding_nonsingular(X: np.ndarray, tau: float, Sigma_inv: np
 
 @jax.jit
 def block_soft_thresholding_diagonal_vec(y, tau, diag_inv):
+    """
+    Special case of block_soft_thresholding_nonsingular_vec when the precision matrix is diagonal.
+    """
     d = len(y)
     quad_whitening = jnp.sum(diag_inv * y ** 2)
     return jax.lax.cond(quad_whitening > tau**2,
@@ -114,6 +133,9 @@ def block_soft_thresholding_diagonal_vec(y, tau, diag_inv):
 
 
 def block_soft_thresholding_diagonal(X, tau, diag_inv):
+    """
+    Special case of block_soft_thresholding_nonsingular when the precision matrix is diagonal.
+    """
     quad_whitening = np.sum(X ** 2 * diag_inv, axis=1)
     block_soft_thresholding_coeff = np.where(quad_whitening > tau**2, 1 - (tau / np.sqrt(quad_whitening)), 0.0)
     return X * block_soft_thresholding_coeff[:, np.newaxis]
@@ -121,6 +143,9 @@ def block_soft_thresholding_diagonal(X, tau, diag_inv):
 
 @jax.jit
 def block_soft_thresholding_singular_vec(y, tau, Sigma_eigvecs, nonzero_indices_int, zero_indices_int, Sigma_nonzero_eigvals_inv):
+    """
+    Performs block soft thresholding on a vector when the noise covariance matrix is singular.
+    """
     # changing coordinates to get uncorrelated components
     y_indep = jnp.matmul(Sigma_eigvecs.T, y)
 
@@ -149,6 +174,9 @@ def block_soft_thresholding_singular(X, tau, Sigma_eigvecs,
                                      nonzero_indices_int,
                                      zero_indices_int,
                                      Sigma_nonzero_eigvals_inv):
+    """
+    Performs block soft thresholding on a matrix when the noise covariance matrix is singular.
+    """
     # changing coordinates to get uncorrelated components
     X_indep = np.matmul(X, Sigma_eigvecs)
 
@@ -199,6 +227,9 @@ def update_signal_denoised_singular(signal_noisy_current: float,
 
 @jax.jit
 def block_soft_thresholding_onsager_nonsingular(X, Z, tau, Sigma_inv):
+    """
+    Computes the jacobian matrix row-wise to f(X) where f is a function applied rowwise to matrix X. Here f is the nonsingular blocksoft threshold operator.
+    """
     X = jnp.array(X)
     dd_jacobian = jax.jacfwd(block_soft_thresholding_nonsingular_vec, argnums=0)
     # dd_jacobian = jax.jit(jax.jacfwd(james_stein_nonsingular_vec, argnums=0))
@@ -216,6 +247,10 @@ def block_soft_thresholding_onsager_singular(X,
                                  nonzero_indices_int,
                                  zero_indices_int,
                                  Sigma_nonzero_eigvals_inv):
+    """
+    Computes the jacobian matrix row-wise to f(X) where f is a function applied rowwise to matrix X. Here f is the nonsingular blocksoft threshold operator.
+    """
+
     X = jnp.array(X)
     # selected_rows = rng.choice(X.shape[0], int(selected_rows_frac*X.shape[0]), replace = False)
     dd_jacobian = jax.jacfwd(block_soft_thresholding_singular_vec, argnums=0)
@@ -422,22 +457,15 @@ def run_amp_instance(**dict_params):
                                A,
                                Y_true)
     rel_err = dict_observables['rel_err']
-    # rec_stats_dict['iter_count'] = iter_count
     min_rel_err = rel_err
     
     while iter_count<max_iter and rel_err>err_tol and rel_err<err_explosion_tol:
         tick = time.perf_counter()
         
         iter_count = iter_count + 1
-
-        # signal_denoised_prev = signal_denoised_current
-        # signal_denoised_current = None
-        # Residual_prev = Residual_current
-        # Residual_current = None
-        # noise_cov_current = np.matmul(Residual_prev.T, Residual_prev)/n
-        noise_cov_current = np.cov(Residual_current.T)
-        # noise_cov_current_diag = np.diag(np.var(Residual_prev, axis = 0))
         
+        noise_cov_current = np.cov(Residual_current.T)
+
         D, U = np.linalg.eigh(noise_cov_current)
         D = np.round(D, 10)
         
@@ -512,30 +540,6 @@ def test_experiment() -> dict:
                'selected_rows_frac': [1.0]
                 }]
            }
-    # exp = dict(table_name='amp-integer-grids',
-    #             base_index=0,
-    #             db_url='sqlite:///data/EMS.db3',
-    #             multi_res=[{
-    #                 'nonzero_rows': list(range(1, 100)),
-    #                 'num_measurements': list(range(1, 100)),
-    #                 'signal_nrow': [100],
-    #                 'signal_ncol': [1, 2, 3, 4, 5],
-    #                 'mc': list(range(100)),
-    #                 'err_tol': [1e-5],
-    #                 'sparsity_tol': [1e-4]
-    #             }])
-    # exp = dict(table_name='comr-N50-larger-grids',
-    #             base_index=0,
-    #             db_url='sqlite:///data/EMS.db3',
-    #             multi_res=[{
-    #                 'nonzero_rows': list(range(1, 50)),
-    #                 'num_measurements': list(range(1, 50)),
-    #                 'signal_nrow': [50],
-    #                 'signal_ncol': [1, 2, 3, 4, 5],
-    #                 'mc': list(range(100)),
-    #                 'err_tol': [1e-5],
-    #                 'sparsity_tol': [1e-4]
-    #             }])
     return exp
 
 
