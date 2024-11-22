@@ -362,7 +362,7 @@ def gen_iid_normal_mtx(num_measurements, signal_nrow, rng):
         num_measurements by signal_nrow matrix.
 
     """
-    return rng.normal(0, 1, (num_measurements, signal_nrow))
+    return jax.random.normal(rng, (num_measurements, signal_nrow))
 
 
 def recovery_stats(X_true: float,
@@ -410,7 +410,8 @@ def recovery_stats(X_true: float,
 
 
 def add_row_to_df(dict_to_add, df):
-    return concat([df, DataFrame(dict_to_add, index = [0])], ignore_index=True)
+    new_df = DataFrame(dict_to_add, index = [0], dtype = float)
+    return concat([df, new_df], ignore_index = True)
 
 
 def run_amp_instance(**dict_params):
@@ -427,16 +428,16 @@ def run_amp_instance(**dict_params):
     
     iter_count = 0
     
-    rng = np.random.default_rng(seed=seed(iter_count, k, n, N, B, err_tol, mc, sparsity_tol))
-    signal_true = np.zeros((N, B), dtype=float)
-    nonzero_indices = rng.choice(range(N), k, replace=False)
-    signal_true[nonzero_indices, :] = rng.normal(0, 1, (k, B))
-    # signal_true[nonzero_indices, :] = rng.poisson(2, (k, B))
-    # signal_true[nonzero_indices, :] = rng.binomial(1, 0.5, (k, B))
-    signal_true = np.array(signal_true)
+    rng = jax.random.PRNGKey(seed=seed(iter_count, k, n, N, B, err_tol, mc, sparsity_tol))
+    signal_true = jnp.zeros((N, B), dtype=float)
+    nonzero_indices = jax.random.permutation(rng, jnp.arange(N))[:k]
+    random_values = jax.random.normal(rng, (k, B))
+    signal_true = signal_true.at[nonzero_indices,:].set(random_values)
+    # signal_true[nonzero_indices, :] = jax.random.normal(rng, (k, B))
+    signal_true = jnp.array(signal_true)
    
-    A = gen_iid_normal_mtx(n, N, rng)/np.sqrt(n)
-    Y_true = np.matmul(A, signal_true)
+    A = gen_iid_normal_mtx(n, N, rng)/jnp.sqrt(n)
+    Y_true = jnp.matmul(A, signal_true)
     
     sparsity = k/N
     dict_params['sparsity'] = sparsity
@@ -448,7 +449,7 @@ def run_amp_instance(**dict_params):
     
     iter_count = 0
     
-    signal_denoised_current = np.zeros((N, B), dtype = float)
+    signal_denoised_current = jnp.zeros((N, B), dtype = float)
     Residual_current = Y_true
     
     dict_observables = recovery_stats(signal_true,
@@ -464,19 +465,19 @@ def run_amp_instance(**dict_params):
         
         iter_count = iter_count + 1
         
-        noise_cov_current = np.cov(Residual_current.T)
+        noise_cov_current = jnp.cov(Residual_current.T)
 
-        D, U = np.linalg.eigh(noise_cov_current)
-        D = np.round(D, 10)
+        D, U = jnp.linalg.eigh(noise_cov_current)
+        D = jnp.round(D, 10)
         
-        if np.all(D > 0):
+        if jnp.all(D > 0):
             tau = tau_nominal
-            noise_cov_current_inv = np.matmul(U * 1.0/D, U.T)
+            noise_cov_current_inv = jnp.matmul(U * 1.0/D, U.T)
             dict_current = amp_iteration_nonsingular(A, Y_true, signal_denoised_current, Residual_current, tau, noise_cov_current_inv)
         else:
             nonzero_indices = (D > 0)
-            nonzero_indices_int = np.where(nonzero_indices)[0]
-            zero_indices_int = np.where(~nonzero_indices)[0]
+            nonzero_indices_int = jnp.where(nonzero_indices)[0]
+            zero_indices_int = jnp.where(~nonzero_indices)[0]
             tau = minimax_tau_threshold(sparsity, sum(nonzero_indices))
             D_nonzero_inv = 1/D[nonzero_indices_int]
             dict_current = amp_iteration_singular(A, Y_true, 
@@ -495,7 +496,7 @@ def run_amp_instance(**dict_params):
         min_rel_err = min(rel_err, min_rel_err)
         tock = time.perf_counter() - tick
         if iter_count % 50 == 0:
-            dict_observables['avg_trace_resid_cov'] = np.mean(D)
+            dict_observables['avg_trace_resid_cov'] = jnp.mean(D).item()
             dict_observables['min_rel_err'] = min_rel_err
             dict_observables['iter_count'] = iter_count
             dict_observables['time_seconds'] = round(tock, 2)
@@ -503,7 +504,7 @@ def run_amp_instance(**dict_params):
             output_df = add_row_to_df(combined_dict, output_df)
 
     if iter_count % 50 != 0:
-        dict_observables['avg_trace_resid_cov'] = np.mean(D)
+        dict_observables['avg_trace_resid_cov'] = jnp.mean(D).item()
         dict_observables['min_rel_err'] = min_rel_err
         dict_observables['iter_count'] = iter_count
         dict_observables['time_seconds'] = round(tock, 2)
@@ -545,10 +546,10 @@ def test_experiment() -> dict:
 
 def do_sherlock_experiment(json_file: str):
     exp = read_json(json_file)
-    nodes = 1000
-    with SLURMCluster(queue='normal,owners,donoho,hns,stat',
+    nodes = 1
+    with SLURMCluster(queue='gpu,donoho,hns,stat,owners,normal',
                       cores=1, memory='4GiB', processes=1,
-                      walltime='24:00:00') as cluster:
+                      walltime='24:00:00', job_extra_directives=['--gres=gpu:1']) as cluster:
         cluster.scale(jobs=nodes)
         logging.info(cluster.job_script())
         with Client(cluster) as client:
@@ -615,11 +616,5 @@ def count_params(json_file: str):
 
 
 if __name__ == '__main__':
-    # do_local_experiment()
-    #read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_blocksoft_poisson_jit.json')
-    # count_params('updated_undersampling_int_grids.json')
-    # do_sherlock_experiment('exp_dicts/AMP_matrix_recovery_blocksoft_binary_jit_sherlock.json')
-    do_coiled_experiment('exp_dicts/AMP_matrix_recovery_blocksoft_normal_jit_daveUPenn.json')
-    # do_test_exp()
-    # do_test()
-    # run_block_bp_experiment('block_bp_inputs.json')
+    do_sherlock_experiment('exp_dicts/AMP_matrix_recovery_blocksoft_normal_jit_gpu_nvidia.json')
+    # do_coiled_experiment('exp_dicts/AMP_matrix_recovery_blocksoft_normal_jit_daveUPenn.json')
