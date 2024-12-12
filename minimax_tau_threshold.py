@@ -13,7 +13,7 @@ Tested with R equivalent.
 
 from scipy import integrate
 from scipy.stats import chi2
-from scipy.optimize import fsolve
+from scipy.optimize import brentq
 import numpy as np
 
 
@@ -22,7 +22,7 @@ def h_deno_integrand(x, tau, signal_ncol):
 
 
 def h_deno_integral(tau, signal_ncol):
-    return integrate.quad(h_deno_integrand, tau**2, np.inf, args=(tau, signal_ncol))[0]
+    return max(1e-10, integrate.quad(h_deno_integrand, tau**2, np.inf, args=(tau, signal_ncol))[0])
 
 
 def h(tau, signal_ncol):
@@ -37,7 +37,11 @@ def h_centered(tau, sparsity, signal_ncol):
 
 def minimax_tau_threshold(sparsity, signal_ncol):
     #root = newton(h_centered, 0, args=(sparsity, signal_ncol), maxiter = 1000, full_output=True)
-    root = fsolve(func = h_centered, x0 = -2, args = (sparsity, signal_ncol))
-    return root.item()
+    #root = fsolve(func = h_centered, x0 = -2, args = (sparsity, signal_ncol))
+    root = brentq(h_centered, 0, 1e+10, args = (sparsity, signal_ncol))
+    return root
 
-minimax_tau_threshold(0.2, 5)
+
+def minimax_tau_threshold_approx(sparsity, signal_ncol):
+    return (1-sparsity)*np.sqrt(signal_ncol)
+
