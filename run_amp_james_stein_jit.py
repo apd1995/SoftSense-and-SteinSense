@@ -509,9 +509,9 @@ def test_experiment() -> dict:
 
 def do_sherlock_experiment(json_file: str):
     exp = read_json(json_file)
-    nodes = 1000
+    nodes = 1500
     with SLURMCluster(queue='normal,owners,donoho,hns,stat',
-                      cores=1, memory='4GiB', processes=1,
+                      cores=1, memory='8GiB', processes=1,
                       walltime='24:00:00') as cluster:
         cluster.scale(jobs=nodes)
         logging.info(cluster.job_script())
@@ -530,11 +530,11 @@ def do_coiled_experiment(json_file: str):
         name=software_environment,
         conda="environment-coiled.yml",
         pip=[
-            "git+https://github.com/adonoho/EMS.git"
+            "git+https://github.com/adonoho/EMS.git@v0.0.17"
         ]
     )
     with coiled.Cluster(software=software_environment,
-                        n_workers=960, worker_vm_types=['n1-standard-1'],
+                        n_workers=500, worker_vm_types=['n1-standard-1'],
                         use_best_zone=True, spot_policy='spot') as cluster:
         with Client(cluster) as client:
             do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
@@ -582,8 +582,8 @@ if __name__ == '__main__':
     # do_local_experiment()
     # read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_JS_poisson_jit.json')
     # count_params('updated_undersampling_int_grids.json')
-    do_coiled_experiment('exp_dicts/AMP_matrix_recovery_JS_normal_jit_daveUPenn.json')
-    # do_sherlock_experiment('exp_dicts/AMP_matrix_recovery_JS_binary_jit_sherlock.json')
+    do_coiled_experiment('exp_dicts/AMP_matrix_recovery_JS_normal_jit_N1000B100.json')
+    # do_sherlock_experiment('exp_dicts/AMP_matrix_recovery_JS_normal_jit_N1000B100.json')
     # do_test_exp()
     # do_test()
     # run_block_bp_experiment('block_bp_inputs.json')
