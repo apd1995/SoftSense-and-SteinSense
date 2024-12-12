@@ -530,7 +530,7 @@ def do_coiled_experiment(json_file: str):
         name=software_environment,
         conda="environment-coiled.yml",
         pip=[
-            "git+https://GIT_TOKEN@github.com/adonoho/EMS.git"
+            "git+https://github.com/adonoho/EMS.git"
         ]
     )
     with coiled.Cluster(software=software_environment,
@@ -582,8 +582,8 @@ if __name__ == '__main__':
     # do_local_experiment()
     # read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_JS_poisson_jit.json')
     # count_params('updated_undersampling_int_grids.json')
-    # do_coiled_experiment('exp_dicts/AMP_matrix_recovery_JS_poisson_jit.json')
-    do_sherlock_experiment('exp_dicts/AMP_matrix_recovery_JS_binary_jit_sherlock.json')
+    do_coiled_experiment('exp_dicts/AMP_matrix_recovery_JS_normal_jit_daveUPenn.json')
+    # do_sherlock_experiment('exp_dicts/AMP_matrix_recovery_JS_binary_jit_sherlock.json')
     # do_test_exp()
     # do_test()
     # run_block_bp_experiment('block_bp_inputs.json')
