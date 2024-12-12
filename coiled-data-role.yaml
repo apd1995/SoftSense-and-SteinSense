@@ -1,0 +1,16 @@
+title: coiled-data
+description: Service account attached to cluster instances for data and BigQuery access.
+stage: GA
+includedPermissions:
+- logging.logEntries.create
+- storage.buckets.get
+- storage.buckets.create
+- storage.objects.create
+- storage.objects.get
+- storage.objects.list
+- storage.objects.update
+- roles/bigquery.dataEditor
+- roles/bigquery.dataOwner
+- roles/bigquery.dataViewer
+- roles/bigquery.jobUser
+- roles/bigquery.metadataViewer

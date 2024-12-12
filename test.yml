@@ -1,0 +1,22 @@
+name: MatrixRecovery
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - blas[build=mkl]
+  - numpy
+  - python=3.10
+  - pandas-gbq
+  - cvxpy
+  - dask
+  - sqlalchemy
+  - pg8000
+  - cloud-sql-python-connector
+  - coiled
+  - ca-certificates
+  - certifi
+  - openssl
+variables:
+  MKL_NUM_THREADS: '1'
+  OPENBLAS_NUM_THREADS: '1'
+prefix: /Users/awd/mambaforge/envs/MatrixRecovery
