@@ -1,4 +1,4 @@
-name: MatrixRecovery
+name: AMPMatrixRecovery
 channels:
   - conda-forge
   - defaults
@@ -9,6 +9,8 @@ dependencies:
   - icu>=70.1
   - cairo>=1.16.0
   - pandas
+  - autograd
+  - scipy
   - google-auth
   - pandas-gbq>=0.19.2
   - cvxpy
@@ -20,4 +22,4 @@ dependencies:
 variables:
   MKL_NUM_THREADS: '1'
   OPENBLAS_NUM_THREADS: '1'
-prefix: /Users/awd/opt/anaconda3/envs/MatrixRecovery
+prefix: /Users/awd/opt/anaconda3/envs/AMPMatrixRecovery

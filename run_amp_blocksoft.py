@@ -11,8 +11,8 @@ from numpy.random import Generator
 import cvxpy as cvx
 from pandas import DataFrame
 import time
-import amp_iteration as amp
-from minimax_tau_threshold import minimax_tau_threshold
+# import amp_iteration as amp
+# from minimax_tau_threshold import minimax_tau_threshold
 
 from EMS.manager import do_on_cluster, get_gbq_credentials, do_test_experiment, read_json, unroll_experiment
 from dask.distributed import Client, LocalCluster
@@ -25,6 +25,244 @@ logging.basicConfig(level=logging.INFO)
 log_gbq = logging.getLogger('pandas_gbq')
 log_gbq.setLevel(logging.DEBUG)
 log_gbq.addHandler(logging.StreamHandler())
+
+
+# ===== minimax_tau_threshold.py =====
+from scipy import integrate
+from scipy.stats import chi2
+from scipy.optimize import brentq
+
+
+def h_deno_integrand(x, tau, signal_ncol):
+    return  (np.sqrt(x) - tau) * chi2.pdf(x, df = signal_ncol)
+
+
+def h_deno_integral(tau, signal_ncol):
+    return max(1e-10, integrate.quad(h_deno_integrand, tau**2, np.inf, args=(tau, signal_ncol))[0])
+
+
+def h(tau, signal_ncol):
+    numerator = tau
+    denominator = h_deno_integral(tau, signal_ncol)
+    return numerator/denominator
+
+
+def h_centered(tau, sparsity, signal_ncol):
+    return h(tau, signal_ncol) + 1 - (1/sparsity)
+
+
+def minimax_tau_threshold(sparsity, signal_ncol):
+    #root = newton(h_centered, 0, args=(sparsity, signal_ncol), maxiter = 1000, full_output=True)
+    #root = fsolve(func = h_centered, x0 = -2, args = (sparsity, signal_ncol))
+    root = brentq(h_centered, 0, 1e+10, args = (sparsity, signal_ncol))
+    return root
+
+
+# ===== amp_iteration.py =====
+import autograd.numpy as anp
+
+
+def block_soft_thresholding_nonsingular_vec(y, tau, Sigma_inv):
+    quad_whitening = anp.dot(anp.matmul(Sigma_inv, y), y)
+    if quad_whitening > 0:
+        return y * max(0, 1 - (tau / anp.sqrt(quad_whitening)))
+    else:
+        return y
+
+
+def block_soft_thresholding_nonsingular(X: anp.ndarray, tau: float, Sigma_inv: anp.ndarray) -> anp.ndarray:
+    """
+    Applies block soft thresholding rowwise to denoise Y.
+
+    Parameters
+    ----------
+    Y : anp.ndarray
+        Noisy signal.
+    tau : float
+        Threshold for block soft thresholding.
+    Sigma_inv : anp.ndarray
+        Noise precision matrix.
+
+    Returns
+    -------
+    None.
+    """
+    quad_whitening = anp.sum(X * anp.matmul(X, Sigma_inv), axis=1)
+    block_soft_thresholding_coeff = anp.where(quad_whitening != 0, 1 - tau / anp.sqrt(quad_whitening), 1)
+    block_soft_thresholding_coeff = anp.where(block_soft_thresholding_coeff > 0, block_soft_thresholding_coeff, 0)
+    return X * block_soft_thresholding_coeff[:, anp.newaxis]
+
+
+def block_soft_thresholding_diagonal_vec(y, tau, diag_inv):
+    quad_whitening = sum(diag_inv * y ** 2)
+    if quad_whitening > 0:
+        return y * max(0, 1 - (tau / anp.sqrt(quad_whitening)))
+    else:
+        return y
+
+
+def block_soft_thresholding_diagonal(X, tau, diag_inv):
+    quad_whitening = anp.sum(X ** 2 * diag_inv, axis=1)
+    block_soft_thresholding_coeff = anp.where(quad_whitening != 0, 1 - tau / anp.sqrt(quad_whitening), 1)
+    block_soft_thresholding_coeff = anp.where(block_soft_thresholding_coeff > 0, block_soft_thresholding_coeff, 0)
+    return X * block_soft_thresholding_coeff[:, anp.newaxis]
+
+
+def block_soft_thresholding_singular_vec(y, tau, Sigma_eigvecs, nonzero_indices, Sigma_nonzero_eigvals_inv):
+    # changing coordinates to get uncorrelated components
+    y_indep = anp.matmul(Sigma_eigvecs.T, y)
+
+    y_indep_nonzero = y_indep[nonzero_indices]
+
+    # apply denoiser on these coordinates to estimate the signal in the new basis on indep coordinates
+    signal_newbasis_indep = block_soft_thresholding_diagonal_vec(y_indep_nonzero, tau, Sigma_nonzero_eigvals_inv)
+
+    # when D has a 0 entry, it means we have perfect precision
+    zero_indices = ~nonzero_indices
+    y_indep_zero = y_indep[zero_indices]
+    signal_newbasis_zero = y_indep_zero
+
+    # combine the two to get signal_newbasis
+    signal_newbasis = anp.concatenate((signal_newbasis_zero, signal_newbasis_indep))
+    # signal_newbasis = anp.zeros(len(y), dtype = float)
+    # signal_newbasis[nonzero_indices] = signal_newbasis_indep
+    # signal_newbasis[zero_indices] = signal_newbasis_zero
+
+    # we have identified U.T @ signal, now we need to get signal i.e revert to original coordinates
+    signal_originalbasis = anp.matmul(Sigma_eigvecs, signal_newbasis)
+
+    return signal_originalbasis
+
+
+def block_soft_thresholding_singular(X, tau, Sigma_eigvecs, nonzero_indices, Sigma_nonzero_eigvals_inv):
+    # changing coordinates to get uncorrelated components
+    X_indep = anp.matmul(X, Sigma_eigvecs)
+
+    X_indep_nonzero = X_indep[:, nonzero_indices]
+
+    # apply denoiser on these coordinates to estimate the signal in the new basis on indep coordinates
+    signal_newbasis_indep = block_soft_thresholding_diagonal(X_indep_nonzero, tau, Sigma_nonzero_eigvals_inv)
+
+    # when D has a 0 entry, it means we have perfect precision
+    zero_indices = ~nonzero_indices
+    X_indep_zero = X_indep[:, zero_indices]
+    signal_newbasis_zero = X_indep_zero
+
+    # combine the two to get signal_newbasis
+    signal_newbasis = anp.zeros(X.shape, dtype=float)
+    signal_newbasis[:, nonzero_indices] = signal_newbasis_indep
+    signal_newbasis[:, zero_indices] = signal_newbasis_zero
+
+    # we have identified U.T @ signal, now we need to get signal i.e revert to original coordinates
+    signal_originalbasis = anp.matmul(signal_newbasis, Sigma_eigvecs.T)
+
+    return signal_originalbasis
+
+
+def update_signal_noisy(A: float,
+                        signal_denoised_prev: float,
+                        Residual_prev: float):
+    return signal_denoised_prev + np.matmul(A.T, Residual_prev)
+
+
+def update_signal_denoised_nonsingular(signal_noisy_current: float,
+                                       tau: float,
+                                       noise_cov_current_inv: float):
+    return block_soft_thresholding_nonsingular(signal_noisy_current, tau, noise_cov_current_inv)
+
+
+def update_signal_denoised_singular(signal_noisy_current: float,
+                                    tau: float,
+                                    noise_cov_current_eigvecs: float,
+                                    noise_cov_current_nonzero_indices,
+                                    noise_cov_current_nonzero_eigvals_inv: float):
+    return block_soft_thresholding_singular(signal_noisy_current, tau, noise_cov_current_eigvecs,
+                                            noise_cov_current_nonzero_indices, noise_cov_current_nonzero_eigvals_inv)
+
+
+from autograd import jacobian
+
+def block_soft_thresholding_onsager_nonsingular(X, Z, tau, Sigma_inv):
+    X = X.astype(np.float64)
+    jacobian_mat_list = [jacobian(block_soft_thresholding_nonsingular_vec)(X[i, :], tau, Sigma_inv) for i in
+                         range(X.shape[0])]
+    onsager_list = [anp.matmul(jacobian_mat, Z.T) for jacobian_mat in jacobian_mat_list]
+    return sum(onsager_list).T / Z.shape[0]
+
+
+def block_soft_thresholding_onsager_singular(X, Z, tau, Sigma_eigvecs, nonzero_indices, Sigma_nonzero_eigvals_inv):
+    X = X.astype(np.float64)
+    jacobian_mat_list = [jacobian(block_soft_thresholding_singular_vec)(X[i, :], tau, Sigma_eigvecs, nonzero_indices,
+                                                                        Sigma_nonzero_eigvals_inv) for i in
+                         range(X.shape[0])]
+    onsager_list = [anp.matmul(jacobian_mat, Z.T) for jacobian_mat in jacobian_mat_list]
+    return sum(onsager_list).T / Z.shape[0]
+
+
+def update_residual_singular(A: float,
+                             Y: float,
+                             signal_noisy_current: float,
+                             signal_denoised_current: float,
+                             Residual_prev: float,
+                             tau: float,
+                             noise_cov_current_eigvecs: float,
+                             noise_cov_current_nonzero_indices,
+                             noise_cov_current_nonzero_eigvals_inv: float):
+    naive_residual = Y - np.matmul(A, signal_denoised_current)
+    onsager_term_ = block_soft_thresholding_onsager_singular(signal_noisy_current, Residual_prev, tau,
+                                                             noise_cov_current_eigvecs,
+                                                             noise_cov_current_nonzero_indices,
+                                                             noise_cov_current_nonzero_eigvals_inv)
+    return naive_residual + onsager_term_
+
+
+def update_residual_nonsingular(A: float,
+                                Y: float,
+                                signal_noisy_current: float,
+                                signal_denoised_current: float,
+                                Residual_prev: float,
+                                tau: float,
+                                noise_cov_current_inv: float):
+    naive_residual = Y - np.matmul(A, signal_denoised_current)
+    onsager_term_ = block_soft_thresholding_onsager_nonsingular(signal_noisy_current, Residual_prev, tau,
+                                                                noise_cov_current_inv)
+    return naive_residual + onsager_term_
+
+
+def amp_iteration_nonsingular(A: float,
+                              Y: float,
+                              signal_denoised_prev: float,
+                              Residual_prev: float,
+                              tau: float,
+                              noise_cov_current_inv: float):
+    signal_noisy_current = update_signal_noisy(A, signal_denoised_prev, Residual_prev)
+    # noise_cov_current = Residual_prev.T @ Residual_prev/A.shape[0]
+    signal_denoised_current = update_signal_denoised_nonsingular(signal_noisy_current, tau, noise_cov_current_inv)
+    Residual_current = update_residual_nonsingular(A, Y, signal_noisy_current, signal_denoised_current, Residual_prev,
+                                                   tau, noise_cov_current_inv)
+    return {'signal_denoised_current': signal_denoised_current,
+            'Residual_current': Residual_current}
+
+
+def amp_iteration_singular(A: float,
+                           Y: float,
+                           signal_denoised_prev: float,
+                           Residual_prev: float,
+                           tau: float,
+                           noise_cov_current_eigvecs: float,
+                           noise_cov_current_nonzero_indices,
+                           noise_cov_current_nonzero_eigvals_inv: float):
+    signal_noisy_current = update_signal_noisy(A, signal_denoised_prev, Residual_prev)
+    # noise_cov_current = Residual_prev.T @ Residual_prev/A.shape[0]
+    signal_denoised_current = update_signal_denoised_singular(signal_noisy_current, tau, noise_cov_current_eigvecs,
+                                                              noise_cov_current_nonzero_indices,
+                                                              noise_cov_current_nonzero_eigvals_inv)
+    Residual_current = update_residual_singular(A, Y, signal_noisy_current, signal_denoised_current, Residual_prev, tau,
+                                                noise_cov_current_eigvecs, noise_cov_current_nonzero_indices,
+                                                noise_cov_current_nonzero_eigvals_inv)
+    return {'signal_denoised_current': signal_denoised_current,
+            'Residual_current': Residual_current}
+
 
 def seed(nonzero_rows: float, num_measurements: float, signal_nrow: float, signal_ncol: float, err_tol: float, mc: float, sparsity_tol: float) -> int:
     return round(1 + round(nonzero_rows * 1000) + round(num_measurements * 1000) + round(signal_nrow * 1000) + round(signal_ncol * 1000) + round(err_tol * 100000) + mc * 100000 + round(sparsity_tol * 1000000))
@@ -134,15 +372,16 @@ def run_amp_instance(**dict_params):
         Residual_prev = Residual_current
         noise_cov_current = np.matmul(Residual_prev.T, Residual_prev)/n
         
-        if np.linalg.det(noise_cov_current) > 1e-10:
-            noise_cov_current_inv = np.linalg.inv(noise_cov_current)
-            dict_current = amp.amp_iteration_nonsingular(A, Y, signal_denoised_prev, Residual_prev, tau, noise_cov_current_inv)
+        D, U = np.linalg.eigh(noise_cov_current)
+        D = np.round(D, 10)
+        
+        if np.all(D > 0):
+            noise_cov_current_inv = np.matmul(U * 1.0/D, U.T)
+            dict_current = amp_iteration_nonsingular(A, Y, signal_denoised_prev, Residual_prev, tau, noise_cov_current_inv)
         else:
-            D, U = np.linalg.eigh(noise_cov_current)
-            D = np.round(D, 10)
-            nonzero_indices = (D>0)
+            nonzero_indices = (D > 0)
             D_nonzero_inv = 1/D[nonzero_indices]
-            dict_current = amp.amp_iteration_singular(A, Y, signal_denoised_prev, Residual_prev, tau, U, nonzero_indices, D_nonzero_inv)
+            dict_current = amp_iteration_singular(A, Y, signal_denoised_prev, Residual_prev, tau, U, nonzero_indices, D_nonzero_inv)
         
         signal_denoised_current = dict_current['signal_denoised_current']
         Residual_current = dict_current['Residual_current']
@@ -203,12 +442,10 @@ def test_experiment() -> dict:
     return exp
 
 
-def do_coiled_experiment():
-    exp = test_experiment()
+def do_coiled_experiment(json_file: str):
+    exp = read_json(json_file)
     logging.info(f'{json.dumps(dask.config.config, indent=4)}')
-    software_environment = 'adonoho/matrix_recovery'
-    # logging.info('Deleting environment.')
-    # coiled.delete_software_environment(software_environment)
+    software_environment = 'adonoho/amp_matrix_recovery'
     logging.info('Creating environment.')
     coiled.create_software_environment(
         name=software_environment,
@@ -217,10 +454,10 @@ def do_coiled_experiment():
             "git+https://GIT_TOKEN@github.com/adonoho/EMS.git"
         ]
     )
-    with coiled.Cluster(software=software_environment, n_workers=10) as cluster:
+    with coiled.Cluster(software=software_environment, n_workers=320, worker_vm_types=['n1-standard-1'],
+                        use_best_zone=True, compute_purchase_option="spot_with_fallback") as cluster:
         with Client(cluster) as client:
             do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
-            # do_on_cluster(exp, block_bp_instance_df, client, project_id='coiled-data@hs-deep-lab-donoho.iam.gserviceaccount.com')
 
 
 def do_local_experiment():
@@ -263,9 +500,9 @@ def count_params(json_file: str):
 
 if __name__ == '__main__':
     # do_local_experiment()
-    read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_blocksoft_07.json')
+    read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_blocksoft_09.json')
     # count_params('updated_undersampling_int_grids.json')
-    # do_coiled_experiment()
+    # do_coiled_experiment('exp_dicts/AMP_matrix_recovery_blocksoft_09.json')
     # do_test_exp()
     # do_test()
     # run_block_bp_experiment('block_bp_inputs.json')

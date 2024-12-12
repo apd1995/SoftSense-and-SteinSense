@@ -13,21 +13,21 @@ Note that we need the transpose of the jacobian matrix for AMP.
 
 from autograd import jacobian
 #from autograd import make_jvp
-import autograd.numpy as np
+import autograd.numpy as anp
 import block_soft_thresholding as bs
 
 
 def block_soft_thresholding_onsager_nonsingular(X, Z, tau, Sigma_inv):
-    X = X.astype(np.float64)
+    X = X.astype(anp.float64)
     jacobian_mat_list = [jacobian(bs.block_soft_thresholding_nonsingular_vec)(X[i,:], tau, Sigma_inv) for i in range(X.shape[0])]
-    onsager_list = [np.matmul(jacobian_mat, Z.T) for jacobian_mat in jacobian_mat_list]
+    onsager_list = [anp.matmul(jacobian_mat, Z.T) for jacobian_mat in jacobian_mat_list]
     return sum(onsager_list).T/Z.shape[0]
         
     
 def block_soft_thresholding_onsager_singular(X, Z, tau, Sigma_eigvecs, nonzero_indices, Sigma_nonzero_eigvals_inv):
-    X = X.astype(np.float64)
+    X = X.astype(anp.float64)
     jacobian_mat_list = [jacobian(bs.block_soft_thresholding_singular_vec)(X[i,:], tau, Sigma_eigvecs, nonzero_indices, Sigma_nonzero_eigvals_inv) for i in range(X.shape[0])]
-    onsager_list = [np.matmul(jacobian_mat, Z.T) for jacobian_mat in jacobian_mat_list]
+    onsager_list = [anp.matmul(jacobian_mat, Z.T) for jacobian_mat in jacobian_mat_list]
     return sum(onsager_list).T/Z.shape[0]
 
     
