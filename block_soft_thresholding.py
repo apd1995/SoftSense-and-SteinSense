@@ -9,26 +9,30 @@ Created on Fri Aug 25 09:07:53 2023
 import autograd.numpy as np
 
 
-def block_soft_thresholding_nonsingular(y, tau, Sigma):
-    quad_whitening = y.T @ np.linalg.inv(Sigma) @ y
+def block_soft_thresholding_nonsingular(y, tau, Sigma_inv):
+    quad_whitening = np.dot(np.matmul(Sigma_inv, y), y)
+    if quad_whitening > 0:
+        return y * max(0, 1 - (tau/np.sqrt(quad_whitening)))
+    else:
+        return y
+    
+
+def block_soft_thresholding_diagonal(y, tau, diag_inv):
+    quad_whitening = sum(diag_inv * y**2)
     if quad_whitening > 0:
         return y * max(0, 1 - (tau/np.sqrt(quad_whitening)))
     else:
         return y
 
 
-def block_soft_thresholding_singular(y, tau, Sigma):
-    D, U = np.linalg.eigh(Sigma)
-    
+def block_soft_thresholding_singular(y, tau, Sigma_eigvals, Sigma_eigvecs, nonzero_indices, Sigma_nonzero_eigvals_inv):
     # changing coordinates to get uncorrelated components
-    y_indep = U.T @ y
+    y_indep = np.matmul(Sigma_eigvecs.T, y)
     
-    nonzero_indices = (D > 0)
-    D_nonzero = np.diag(D[nonzero_indices])
     y_indep_nonzero =  y_indep[nonzero_indices]
     
     # apply denoiser on these coordinates to estimate the signal in the new basis on indep coordinates
-    signal_newbasis_indep = block_soft_thresholding_nonsingular(y_indep_nonzero, tau, D_nonzero)
+    signal_newbasis_indep = block_soft_thresholding_diagonal(y_indep_nonzero, tau, Sigma_nonzero_eigvals_inv)
     
     # when D has a 0 entry, it means we have perfect precision
     zero_indices = ~nonzero_indices
@@ -39,14 +43,6 @@ def block_soft_thresholding_singular(y, tau, Sigma):
     signal_newbasis = np.concatenate((signal_newbasis_zero, signal_newbasis_indep))
     
     # we have identified U.T @ signal, now we need to get signal i.e revert to original coordinates
-    signal_originalbasis = U @ signal_newbasis
+    signal_originalbasis = np.matmul(Sigma_eigvecs, signal_newbasis)
     
     return signal_originalbasis
-
-
-def block_soft_thresholding(y, tau, Sigma):
-    if np.linalg.det(Sigma) == 0:
-    # if np.isclose(np.linalg.det(Sigma), 0, atol = 1e-10):
-        return block_soft_thresholding_singular(y, tau, Sigma)
-    else:
-        return block_soft_thresholding_nonsingular(y, tau, Sigma)
