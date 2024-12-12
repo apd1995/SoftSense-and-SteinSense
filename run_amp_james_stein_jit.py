@@ -25,7 +25,6 @@ log_gbq.setLevel(logging.DEBUG)
 log_gbq.addHandler(logging.StreamHandler())
 import jax
 import jax.numpy as jnp
-from jax import ShapeDtypeStruct
 
 
 def seed(iter_count: int,
@@ -178,8 +177,8 @@ def james_stein_onsager_nonsingular(X,
     X = jnp.array(X)
     dd_jacobian = jax.jacfwd(james_stein_nonsingular_vec, argnums=0)
     # dd_jacobian = jax.jit(jax.jacfwd(james_stein_nonsingular_vec, argnums=0))
-    jacobian_mat_list = [dd_jacobian(X[i,:], Sigma_inv) for i in selected_rows]
-    sum_jacobians = sum(jacobian_mat_list)
+    jac_vectorized = jax.vmap(dd_jacobian, in_axes = (0, None))
+    sum_jacobians = jac_vectorized(X, Sigma_inv).sum(axis = 0)
     onsager_term = jnp.matmul(Z, sum_jacobians.T)
     return onsager_term / (Z.shape[0] * selected_rows_frac)
   
@@ -197,8 +196,8 @@ def james_stein_onsager_singular(X,
     # selected_rows = rng.choice(X.shape[0], int(selected_rows_frac*X.shape[0]), replace = False)
     dd_jacobian = jax.jacfwd(james_stein_singular_vec, argnums=0)
     # dd_jacobian = jax.jit(jax.jacfwd(james_stein_singular_vec, argnums=0))
-    jacobian_mat_list = [dd_jacobian(X[i,:], Sigma_eigvecs, nonzero_indices_int, zero_indices_int, Sigma_nonzero_eigvals_inv) for i in selected_rows]
-    sum_jacobians = sum(jacobian_mat_list)
+    jac_vectorized = jax.vmap(dd_jacobian, in_axes = (0, None, None, None, None))
+    sum_jacobians = jac_vectorized(X, Sigma_eigvecs, nonzero_indices_int, zero_indices_int, Sigma_nonzero_eigvals_inv).sum(axis = 0)
     onsager_term = jnp.matmul(Z, sum_jacobians.T)
     return onsager_term / (Z.shape[0] * selected_rows_frac)
 
@@ -209,8 +208,8 @@ def warm_up():
     res1 = james_stein_nonsingular_vec(y, Sigma_inv)
     res2 = james_stein_diagonal_vec(y, np.ones(5, dtype = float))
     res3 = james_stein_singular_vec(y, Sigma_inv, np.array([0,1,2]), np.array([3,4]), np.ones(3, dtype = float))
-    res4 = james_stein_onsager_nonsingular(np.ones((2,5), dtype = float), Sigma_inv, Sigma_inv, np.array([0]), 1.0)
-    res5 = james_stein_onsager_singular(np.ones((2,5), dtype = float), Sigma_inv, Sigma_inv, np.array([0,1,2]), np.array([3,4]), np.ones(3, dtype = float), np.array([0]), 1.0)
+    res4 = james_stein_onsager_nonsingular(np.ones((1000,5), dtype = float), Sigma_inv, Sigma_inv, np.array([0]), 1.0)
+    res5 = james_stein_onsager_singular(np.ones((1000,5), dtype = float), Sigma_inv, Sigma_inv, np.array([0,1,2]), np.array([3,4]), np.ones(3, dtype = float), np.array([0]), 1.0)
     return True
     
 
@@ -302,7 +301,7 @@ def amp_iteration_singular(A: float,
 
 
 def warm_up_2():
-    res1 = amp_iteration_nonsingular(np.eye(3), np.eye(3), 2*np.eye(3), np.eye(3), np.eye(3), np.array([0]), 1.0)
+    res1 = amp_iteration_nonsingular(np.eye(1000), np.eye(1000), 2*np.eye(1000), np.eye(1000), np.eye(1000), np.array([0]), 1.0)
     res2 = amp_iteration_singular(np.eye(3), np.eye(3), 2*np.eye(3), np.eye(3), np.eye(3), np.arange(2), np.array([2]), np.ones(2, dtype = float), np.array([0]), 1.0)
     return True
 
@@ -472,12 +471,12 @@ def run_amp_instance(**dict_params):
                                    sparsity_tol)
         rel_err = dict_observables['rel_err']
         min_rel_err = min(rel_err, min_rel_err)
-
-    tock = time.perf_counter() - tick
+    
     end_time_iteration_2_onwards = time.perf_counter()
+    tock = time.perf_counter() - tick
     dict_observables['min_rel_err'] = min_rel_err
     dict_observables['iter_count'] = iter_count
-    dict_observables['time_iteration_1'] = end_time_iteration_1 - start_time_iteration_1
+    dict_observables['time_iteration_1'] = round(end_time_iteration_1 - start_time_iteration_1, 2)
     dict_observables['time_iteration_2_onwards'] = round(end_time_iteration_2_onwards - start_time_iteration_2_onwards, 2)
     dict_observables['time_seconds'] = round(tock, 2)
 
@@ -558,8 +557,7 @@ def do_local_experiment():
 
 def read_and_do_local_experiment(json_file: str):
     exp = read_json(json_file)
-    with LocalCluster(dashboard_address='localhost:8787') as cluster:
-    # with LocalCluster(dashboard_address='localhost:8787') as cluster:
+    with LocalCluster(dashboard_address='localhost:8787', n_workers=20) as cluster:
         with Client(cluster) as client:
             # do_on_cluster(exp, run_amp_instance, client, credentials=None)
             do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
@@ -588,9 +586,9 @@ def count_params(json_file: str):
 
 if __name__ == '__main__':
     # do_local_experiment()
-    read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_JS_approx_jacobian_normal_jax_delayed.json')
+    read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_JS_approx_jacobian_normal_jit.json')
     # count_params('updated_undersampling_int_grids.json')
-    # do_coiled_experiment('exp_dicts/AMP_matrix_recovery_JS_approx_jacobian_normal_jax_delayed.json')
+    # do_coiled_experiment('exp_dicts/AMP_matrix_recovery_JS_approx_jacobian_normal_jit.json')
     # do_test_exp()
     # do_test()
     # run_block_bp_experiment('block_bp_inputs.json')
