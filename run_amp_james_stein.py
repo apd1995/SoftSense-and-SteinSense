@@ -297,7 +297,7 @@ def run_amp_instance(**dict_params):
 
     signal_true = np.zeros((N, B), dtype=float)
     nonzero_indices = rng.choice(range(N), k, replace=False)
-    signal_true[nonzero_indices, :] = rng.poisson(5, (k, B))
+    signal_true[nonzero_indices, :] = rng.normal(0, 1, (k, B))
    
     A = gen_iid_normal_mtx(n, N, rng)/np.sqrt(n)
     Y = np.matmul(A, signal_true)
@@ -406,6 +406,7 @@ def do_coiled_experiment(json_file: str):
     exp = read_json(json_file)
     # logging.info(f'{json.dumps(dask.config.config, indent=4)}')
     software_environment = 'adonoho/amp_matrix_recovery'
+    # coiled.delete_software_environment(software_environment)
     logging.info('Creating environment.')
     coiled.create_software_environment(
         name=software_environment,
@@ -414,7 +415,7 @@ def do_coiled_experiment(json_file: str):
             "git+https://GIT_TOKEN@github.com/adonoho/EMS.git"
         ]
     )
-    with coiled.Cluster(software=software_environment, n_workers=320, worker_vm_types=['n1-standard-1'],
+    with coiled.Cluster(software=software_environment, n_workers=500, worker_vm_types=['n1-standard-1'],
                         use_best_zone=True, compute_purchase_option="spot") as cluster:
         with Client(cluster) as client:
             do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
@@ -460,9 +461,9 @@ def count_params(json_file: str):
 
 if __name__ == '__main__':
     # do_local_experiment()
-    # read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_JS_1_poisson.json')
+    # read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_JS_1_normal.json')
     # count_params('updated_undersampling_int_grids.json')
-    do_coiled_experiment('exp_dicts/AMP_matrix_recovery_JS_1_poisson.json')
+    do_coiled_experiment('exp_dicts/AMP_matrix_recovery_JS_1_normal.json')
     # do_test_exp()
     # do_test()
     # run_block_bp_experiment('block_bp_inputs.json')
