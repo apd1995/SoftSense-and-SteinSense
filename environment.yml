@@ -1,4 +1,3 @@
-name: AMPMatrixRecovery
 channels:
   - conda-forge
   - defaults
@@ -21,8 +20,7 @@ dependencies:
   - cloud-sql-python-connector
   - pip
   - pip:
-    - git+https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/adonoho/EMS.git
+    - git+https://github.com/adonoho/EMS.git
 variables:
   MKL_NUM_THREADS: '1'
   OPENBLAS_NUM_THREADS: '1'
-prefix: /Users/awd/opt/anaconda3/envs/AMPMatrixRecovery
