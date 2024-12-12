@@ -134,14 +134,15 @@ def run_amp_instance(**dict_params):
         Residual_prev = Residual_current
         noise_cov_current = np.matmul(Residual_prev.T, Residual_prev)/n
         
-        if np.linalg.det(noise_cov_current) > 0:
+        if np.linalg.det(noise_cov_current) > 1e-10:
             noise_cov_current_inv = np.linalg.inv(noise_cov_current)
             dict_current = amp.amp_iteration_nonsingular(A, Y, signal_denoised_prev, Residual_prev, tau, noise_cov_current_inv)
         else:
             D, U = np.linalg.eigh(noise_cov_current)
+            D = np.round(D, 10)
             nonzero_indices = (D>0)
             D_nonzero_inv = 1/D[nonzero_indices]
-            dict_current = amp.amp_iteration_singular(A, Y, signal_denoised_prev, Residual_prev, tau, D, U, nonzero_indices, D_nonzero_inv)
+            dict_current = amp.amp_iteration_singular(A, Y, signal_denoised_prev, Residual_prev, tau, U, nonzero_indices, D_nonzero_inv)
         
         signal_denoised_current = dict_current['signal_denoised_current']
         Residual_current = dict_current['Residual_current']
@@ -233,7 +234,9 @@ def do_local_experiment():
 def read_and_do_local_experiment(json_file: str):
     exp = read_json(json_file)
     with LocalCluster(dashboard_address='localhost:8787', n_workers=32, threads_per_worker=1) as cluster:
+    # with LocalCluster(dashboard_address='localhost:8787') as cluster:
         with Client(cluster) as client:
+            # do_on_cluster(exp, run_amp_instance, client, credentials=None)
             do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
 
 
