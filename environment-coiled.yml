@@ -19,6 +19,7 @@ dependencies:
   - sqlalchemy
   - pg8000
   - cloud-sql-python-connector
+  - jax
 variables:
   MKL_NUM_THREADS: '1'
   OPENBLAS_NUM_THREADS: '1'
