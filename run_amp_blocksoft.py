@@ -295,10 +295,10 @@ def recovery_stats(X_true: float,
     N, B = X_true.shape
 
     zero_indices_true = (np.apply_along_axis(np.linalg.norm, 1, X_true)==0)
-    zero_indices_rec = (np.apply_along_axis(np.linalg.norm, 1, X_rec)/np.sqrt(B)<=sparsity_tol)
+    zero_indices_rec = (np.apply_along_axis(np.linalg.norm, 1, X_rec)/np.sqrt(B)<=10*sparsity_tol)
 
     nonzero_indices_true = (np.apply_along_axis(np.linalg.norm, 1, X_true)!=0)
-    nonzero_indices_rec = (np.apply_along_axis(np.linalg.norm, 1, X_rec)/np.sqrt(B)>sparsity_tol)
+    nonzero_indices_rec = (np.apply_along_axis(np.linalg.norm, 1, X_rec)/np.sqrt(B)>10*sparsity_tol)
     
     dict_observables = {
                 'rel_err': cvx.norm(X_true-X_rec, "fro").value/cvx.norm(X_true, "fro").value,
@@ -310,8 +310,8 @@ def recovery_stats(X_true: float,
                 'norm_2_2_rec': cvx.mixed_norm(X_rec, 2, 2).value/np.sqrt(N*B),
                 'norm_2_infty_true': cvx.mixed_norm(X_true, 2, np.inf).value/np.sqrt(B),
                 'norm_2_infty_rec': cvx.mixed_norm(X_rec, 2, np.inf).value/np.sqrt(B),
-                'soft_sparsity': np.mean(np.apply_along_axis(np.linalg.norm, 1, X_rec)/np.sqrt(B) > sparsity_tol),
-                'nonzero_rows_rec': np.sum(np.apply_along_axis(np.linalg.norm, 1, X_rec)/np.sqrt(B) > sparsity_tol),
+                'soft_sparsity': np.mean(np.apply_along_axis(np.linalg.norm, 1, X_rec)/np.sqrt(B) > 10*sparsity_tol),
+                'nonzero_rows_rec': np.sum(np.apply_along_axis(np.linalg.norm, 1, X_rec)/np.sqrt(B) > 10*sparsity_tol),
                 'tpr': sum(zero_indices_true * zero_indices_rec)/max(1, sum(zero_indices_true)),
                 'tnr': sum(nonzero_indices_true * nonzero_indices_rec)/max(1, sum(nonzero_indices_true))
                 }
@@ -335,7 +335,7 @@ def run_amp_instance(**dict_params):
 
     signal_true = np.zeros((N, B), dtype=float)
     nonzero_indices = rng.choice(range(N), k, replace=False)
-    signal_true[nonzero_indices, :] = rng.normal(0, 1, (k, B))
+    signal_true[nonzero_indices, :] = rng.poisson(5, (k, B))
    
     A = gen_iid_normal_mtx(n, N, rng)/np.sqrt(n)
     Y = np.matmul(A, signal_true)
@@ -364,7 +364,7 @@ def run_amp_instance(**dict_params):
     # for key in list(dict_observables):
     #     dict_observables[key] = [dict_observables[key]]
     
-    while iter_count<max_iter and rel_err>err_tol and rel_err<err_explosion_tol:
+    while iter_count<max_iter and rel_err>100*err_tol and rel_err<err_explosion_tol:
         
         iter_count = iter_count + 1
         
@@ -500,7 +500,7 @@ def count_params(json_file: str):
 
 if __name__ == '__main__':
     # do_local_experiment()
-    read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_blocksoft_09.json')
+    read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_blocksoft_10_poisson.json')
     # count_params('updated_undersampling_int_grids.json')
     # do_coiled_experiment('exp_dicts/AMP_matrix_recovery_blocksoft_09.json')
     # do_test_exp()
