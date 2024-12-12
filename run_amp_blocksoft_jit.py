@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Thu Oct 19 02:10:26 2023
+Created on Fri Aug 25 12:30:15 2023
 
 @author: apratimdey
 """
@@ -11,6 +11,8 @@ from numpy.random import Generator
 import cvxpy as cvx
 from pandas import DataFrame
 import time
+# import amp_iteration as amp
+# from minimax_tau_threshold import minimax_tau_threshold
 
 from EMS.manager import do_on_cluster, get_gbq_credentials, do_test_experiment, read_json, unroll_experiment
 from dask.distributed import Client, LocalCluster
@@ -28,6 +30,37 @@ import jax.numpy as jnp
 logging.getLogger('jax').setLevel(logging.ERROR)
 
 
+# ===== minimax_tau_threshold.py =====
+from scipy import integrate
+from scipy.stats import chi2
+from scipy.optimize import brentq
+
+
+def h_deno_integrand(x, tau, signal_ncol):
+    return  (np.sqrt(x) - tau) * chi2.pdf(x, df = signal_ncol)
+
+
+def h_deno_integral(tau, signal_ncol):
+    return max(1e-10, integrate.quad(h_deno_integrand, tau**2, np.inf, args=(tau, signal_ncol))[0])
+
+
+def h(tau, signal_ncol):
+    numerator = tau
+    denominator = h_deno_integral(tau, signal_ncol)
+    return numerator/denominator
+
+
+def h_centered(tau, sparsity, signal_ncol):
+    return h(tau, signal_ncol) + 1 - (1/sparsity)
+
+
+def minimax_tau_threshold(sparsity, signal_ncol):
+    #root = newton(h_centered, 0, args=(sparsity, signal_ncol), maxiter = 1000, full_output=True)
+    #root = fsolve(func = h_centered, x0 = -2, args = (sparsity, signal_ncol))
+    root = brentq(h_centered, 0, 1e+10, args = (sparsity, signal_ncol))
+    return root
+
+
 def seed(iter_count: int,
          nonzero_rows: float,
          num_measurements: float,
@@ -40,75 +73,67 @@ def seed(iter_count: int,
 
 
 @jax.jit
-def james_stein_nonsingular_vec(y,
-                                Sigma_inv):
+def block_soft_thresholding_nonsingular_vec(y, tau, Sigma_inv):
     d = len(y)
     quad_whitening = jnp.dot(y, jnp.dot(Sigma_inv, y))
-    return jax.lax.cond(quad_whitening > (d-2),
-                    lambda y: y * (1 - ((d-2)/quad_whitening)),   # True branch (lambda function)
+    return jax.lax.cond(quad_whitening > tau**2,
+                    lambda y: y * (1 - (tau/jnp.sqrt(quad_whitening))),   # True branch (lambda function)
                     lambda y: jnp.zeros(d),  # False branch (lambda function)
                     y)  # Operand to pass to selected branch
-    
 
-def james_stein_nonsingular(X: np.ndarray, Sigma_inv: np.ndarray) -> np.ndarray:
+
+def block_soft_thresholding_nonsingular(X: np.ndarray, tau: float, Sigma_inv: np.ndarray) -> np.ndarray:
     """
-    Applies james stein rowwise to denoise Y.
+    Applies block soft thresholding rowwise to denoise Y.
 
     Parameters
     ----------
-    Y : np.ndarray
+    Y : anp.ndarray
         Noisy signal.
-    Sigma_inv : np.ndarray
+    tau : float
+        Threshold for block soft thresholding.
+    Sigma_inv : anp.ndarray
         Noise precision matrix.
 
     Returns
     -------
     None.
     """
-    d = X.shape[1]
     quad_whitening = np.sum(X * np.matmul(X, Sigma_inv), axis=1)
-    james_stein_coeff = np.where(quad_whitening > (d-2), 1 - ((d-2)/quad_whitening), 0.0)
-    return X * james_stein_coeff[:, np.newaxis]
+    block_soft_thresholding_coeff = np.where(quad_whitening > tau**2, 1 - (tau / np.sqrt(quad_whitening)), 0.0)
+    return X * block_soft_thresholding_coeff[:, np.newaxis]
 
 
 @jax.jit
-def james_stein_diagonal_vec(y,
-                             diag_inv):
+def block_soft_thresholding_diagonal_vec(y, tau, diag_inv):
     d = len(y)
-    quad_whitening = jnp.sum(diag_inv * y**2)
-    return jax.lax.cond(quad_whitening > (d-2),
-                    lambda y: y * (1 - ((d-2)/quad_whitening)),   # True branch (lambda function)
+    quad_whitening = jnp.sum(diag_inv * y ** 2)
+    return jax.lax.cond(quad_whitening > tau**2,
+                    lambda y: y * (1 - (tau/jnp.sqrt(quad_whitening))),   # True branch (lambda function)
                     lambda y: jnp.zeros(d),  # False branch (lambda function)
                     y)  # Operand to pass to selected branch
 
-    
-def james_stein_diagonal(X, diag_inv):
-    d = X.shape[1]
-    quad_whitening = np.sum(X**2 * diag_inv, axis=1)
-    james_stein_coeff = np.where(quad_whitening > (d-2), 1 - ((d-2)/quad_whitening), 0.0)
-    return X * james_stein_coeff[:, np.newaxis]
+
+def block_soft_thresholding_diagonal(X, tau, diag_inv):
+    quad_whitening = np.sum(X ** 2 * diag_inv, axis=1)
+    block_soft_thresholding_coeff = np.where(quad_whitening > tau**2, 1 - (tau / np.sqrt(quad_whitening)), 0.0)
+    return X * block_soft_thresholding_coeff[:, np.newaxis]
 
 
 @jax.jit
-def james_stein_singular_vec(y,
-                             Sigma_eigvecs,
-                             nonzero_indices_int,
-                             zero_indices_int,
-                             Sigma_nonzero_eigvals_inv):
-    
+def block_soft_thresholding_singular_vec(y, tau, Sigma_eigvecs, nonzero_indices_int, zero_indices_int, Sigma_nonzero_eigvals_inv):
     # changing coordinates to get uncorrelated components
     y_indep = jnp.matmul(Sigma_eigvecs.T, y)
-    
+
     y_indep_nonzero =  y_indep[jnp.array(nonzero_indices_int)]
-    
+
     # apply denoiser on these coordinates to estimate the signal in the new basis on indep coordinates
-    signal_newbasis_indep = james_stein_diagonal_vec(y_indep_nonzero, Sigma_nonzero_eigvals_inv)
-    
+    signal_newbasis_indep = block_soft_thresholding_diagonal_vec(y_indep_nonzero, tau, Sigma_nonzero_eigvals_inv)
+
     # when D has a 0 entry, it means we have perfect precision
-    # zero_indices = ~nonzero_indices
     y_indep_zero = y_indep[jnp.array(zero_indices_int)]
     signal_newbasis_zero = y_indep_zero
-    
+
     # combine the two to get signal_newbasis
     signal_newbasis = jnp.concatenate((signal_newbasis_zero, signal_newbasis_indep))
     # signal_newbasis = np.zeros(len(y), dtype = float)
@@ -121,21 +146,22 @@ def james_stein_singular_vec(y,
     return signal_originalbasis
 
 
-
-def james_stein_singular(X, Sigma_eigvecs, nonzero_indices_int, zero_indices_int, Sigma_nonzero_eigvals_inv):
+def block_soft_thresholding_singular(X, tau, Sigma_eigvecs,
+                                     nonzero_indices_int,
+                                     zero_indices_int,
+                                     Sigma_nonzero_eigvals_inv):
     # changing coordinates to get uncorrelated components
     X_indep = np.matmul(X, Sigma_eigvecs)
-    
-    X_indep_nonzero =  X_indep[:, nonzero_indices_int]
-    
+
+    X_indep_nonzero = X_indep[:, nonzero_indices_int]
+
     # apply denoiser on these coordinates to estimate the signal in the new basis on indep coordinates
-    signal_newbasis_indep = james_stein_diagonal(X_indep_nonzero, Sigma_nonzero_eigvals_inv)
-    
+    signal_newbasis_indep = block_soft_thresholding_diagonal(X_indep_nonzero, tau, Sigma_nonzero_eigvals_inv)
+
     # when D has a 0 entry, it means we have perfect precision
-    # zero_indices = ~nonzero_indices
     X_indep_zero = X_indep[:, zero_indices_int]
     signal_newbasis_zero = X_indep_zero
-    
+
     # combine the two to get signal_newbasis
     signal_newbasis = np.zeros(X.shape, dtype = float)
     signal_newbasis[:, nonzero_indices_int] = signal_newbasis_indep
@@ -154,39 +180,41 @@ def update_signal_noisy(A: float,
 
 
 def update_signal_denoised_nonsingular(signal_noisy_current: float,
+                                       tau: float,
                                        noise_cov_current_inv: float):
-    return james_stein_nonsingular(signal_noisy_current, noise_cov_current_inv)
+    return block_soft_thresholding_nonsingular(signal_noisy_current, tau, noise_cov_current_inv)
 
 
 def update_signal_denoised_singular(signal_noisy_current: float,
+                                    tau: float,
                                     noise_cov_current_eigvecs: float,
                                     noise_cov_current_nonzero_indices_int,
                                     noise_cov_current_zero_indices_int,
                                     noise_cov_current_nonzero_eigvals_inv: float):
-    return james_stein_singular(signal_noisy_current, noise_cov_current_eigvecs,
+    return block_soft_thresholding_singular(signal_noisy_current,
+                                            tau, noise_cov_current_eigvecs,
                                             noise_cov_current_nonzero_indices_int,
                                             noise_cov_current_zero_indices_int,
                                             noise_cov_current_nonzero_eigvals_inv)
 
 
 @jax.jit
-def james_stein_onsager_nonsingular(X,
-                                    Z,
-                                    Sigma_inv,
-                                    selected_rows,
-                                    selected_rows_frac):
+def block_soft_thresholding_onsager_nonsingular(X, Z, tau, Sigma_inv,
+                                                selected_rows,
+                                                selected_rows_frac):
     X = jnp.array(X)
-    dd_jacobian = jax.jacfwd(james_stein_nonsingular_vec, argnums=0)
+    dd_jacobian = jax.jacfwd(block_soft_thresholding_nonsingular_vec, argnums=0)
     # dd_jacobian = jax.jit(jax.jacfwd(james_stein_nonsingular_vec, argnums=0))
-    jac_vectorized = jax.vmap(dd_jacobian, in_axes = (0, None))
-    sum_jacobians = jac_vectorized(X, Sigma_inv).sum(axis = 0)
+    jac_vectorized = jax.vmap(dd_jacobian, in_axes = (0, None, None)) # None for all the other inputs to denoiser
+    sum_jacobians = jac_vectorized(X, tau, Sigma_inv).sum(axis = 0)
     onsager_term = jnp.matmul(Z, sum_jacobians.T)
     return onsager_term / (Z.shape[0] * selected_rows_frac)
-  
-    
+
+
 @jax.jit
-def james_stein_onsager_singular(X,
+def block_soft_thresholding_onsager_singular(X,
                                  Z,
+                                 tau,
                                  Sigma_eigvecs,
                                  nonzero_indices_int,
                                  zero_indices_int,
@@ -195,23 +223,31 @@ def james_stein_onsager_singular(X,
                                  selected_rows_frac):
     X = jnp.array(X)
     # selected_rows = rng.choice(X.shape[0], int(selected_rows_frac*X.shape[0]), replace = False)
-    dd_jacobian = jax.jacfwd(james_stein_singular_vec, argnums=0)
+    dd_jacobian = jax.jacfwd(block_soft_thresholding_singular_vec, argnums=0)
     # dd_jacobian = jax.jit(jax.jacfwd(james_stein_singular_vec, argnums=0))
-    jac_vectorized = jax.vmap(dd_jacobian, in_axes = (0, None, None, None, None))
-    sum_jacobians = jac_vectorized(X, Sigma_eigvecs, nonzero_indices_int, zero_indices_int, Sigma_nonzero_eigvals_inv).sum(axis = 0)
+    jac_vectorized = jax.vmap(dd_jacobian, in_axes = (0, None, None, None, None, None)) # None for all the other inputs to denoiser
+    sum_jacobians = jac_vectorized(X, tau, Sigma_eigvecs, nonzero_indices_int, zero_indices_int, Sigma_nonzero_eigvals_inv).sum(axis = 0)
     onsager_term = jnp.matmul(Z, sum_jacobians.T)
     return onsager_term / (Z.shape[0] * selected_rows_frac)
 
 
-def warm_up():
-    y = np.ones(5, dtype = float)
-    Sigma_inv = np.eye(5, dtype = float)
-    res1 = james_stein_nonsingular_vec(y, Sigma_inv)
-    res2 = james_stein_diagonal_vec(y, np.ones(5, dtype = float))
-    res3 = james_stein_singular_vec(y, Sigma_inv, np.array([0,1,2]), np.array([3,4]), np.ones(3, dtype = float))
-    res4 = james_stein_onsager_nonsingular(np.ones((1000,5), dtype = float), Sigma_inv, Sigma_inv, np.array([0]), 1.0)
-    res5 = james_stein_onsager_singular(np.ones((1000,5), dtype = float), Sigma_inv, Sigma_inv, np.array([0,1,2]), np.array([3,4]), np.ones(3, dtype = float), np.array([0]), 1.0)
-    return True
+def update_residual_nonsingular(A: float,
+                                Y: float,
+                                signal_noisy_current: float,
+                                signal_denoised_current: float,
+                                Residual_prev: float,
+                                tau: float,
+                                noise_cov_current_inv: float,
+                                selected_rows,
+                                selected_rows_frac):
+    naive_residual = Y - np.matmul(A, signal_denoised_current)
+    onsager_term_ = block_soft_thresholding_onsager_nonsingular(signal_noisy_current,
+                                                            Residual_prev,
+                                                            tau,
+                                                            noise_cov_current_inv,
+                                                            selected_rows,
+                                                            selected_rows_frac)
+    return naive_residual + onsager_term_
     
 
 def update_residual_singular(A: float,
@@ -219,6 +255,7 @@ def update_residual_singular(A: float,
                              signal_noisy_current: float,
                              signal_denoised_current: float,
                              Residual_prev: float,
+                             tau: float,
                              noise_cov_current_eigvecs: float,
                              noise_cov_current_nonzero_indices_int,
                              noise_cov_current_zero_indices_int,
@@ -226,8 +263,9 @@ def update_residual_singular(A: float,
                              selected_rows,
                              selected_rows_frac):
     naive_residual = Y - np.matmul(A, signal_denoised_current)
-    onsager_term_ = james_stein_onsager_singular(signal_noisy_current,
+    onsager_term_ = block_soft_thresholding_onsager_singular(signal_noisy_current,
                                                          Residual_prev,
+                                                         tau,
                                                          noise_cov_current_eigvecs,
                                                          noise_cov_current_nonzero_indices_int,
                                                          noise_cov_current_zero_indices_int,
@@ -237,38 +275,23 @@ def update_residual_singular(A: float,
     return naive_residual + onsager_term_
 
 
-def update_residual_nonsingular(A: float,
-                                Y: float,
-                                signal_noisy_current: float,
-                                signal_denoised_current: float,
-                                Residual_prev: float,
-                                noise_cov_current_inv: float,
-                                selected_rows,
-                                selected_rows_frac):
-    naive_residual = Y - np.matmul(A, signal_denoised_current)
-    onsager_term_ = james_stein_onsager_nonsingular(signal_noisy_current,
-                                                            Residual_prev,
-                                                            noise_cov_current_inv,
-                                                            selected_rows,
-                                                            selected_rows_frac)
-    return naive_residual + onsager_term_
-
-
 def amp_iteration_nonsingular(A: float,
                               Y: float,
                               signal_denoised_prev: float,
                               Residual_prev: float,
+                              tau: float,
                               noise_cov_current_inv: float,
                               selected_rows,
                               selected_rows_frac):
     signal_noisy_current = update_signal_noisy(A, signal_denoised_prev, Residual_prev)
     # noise_cov_current = Residual_prev.T @ Residual_prev/A.shape[0]
-    signal_denoised_current = update_signal_denoised_nonsingular(signal_noisy_current, noise_cov_current_inv)
+    signal_denoised_current = update_signal_denoised_nonsingular(signal_noisy_current, tau, noise_cov_current_inv)
     Residual_current = update_residual_nonsingular(A,
                                                    Y,
                                                    signal_noisy_current,
                                                    signal_denoised_current,
                                                    Residual_prev,
+                                                   tau,
                                                    noise_cov_current_inv,
                                                    selected_rows,
                                                    selected_rows_frac)
@@ -280,6 +303,7 @@ def amp_iteration_singular(A: float,
                            Y: float,
                            signal_denoised_prev: float,
                            Residual_prev: float,
+                           tau: float,
                            noise_cov_current_eigvecs: float,
                            noise_cov_current_nonzero_indices_int,
                            noise_cov_current_zero_indices_int,
@@ -288,23 +312,22 @@ def amp_iteration_singular(A: float,
                            selected_rows_frac):
     signal_noisy_current = update_signal_noisy(A, signal_denoised_prev, Residual_prev)
     # noise_cov_current = Residual_prev.T @ Residual_prev/A.shape[0]
-    signal_denoised_current = update_signal_denoised_singular(signal_noisy_current, noise_cov_current_eigvecs,
+    signal_denoised_current = update_signal_denoised_singular(signal_noisy_current, tau,
+                                                              noise_cov_current_eigvecs,
                                                               noise_cov_current_nonzero_indices_int,
                                                               noise_cov_current_zero_indices_int,
                                                               noise_cov_current_nonzero_eigvals_inv)
-    Residual_current = update_residual_singular(A, Y, signal_noisy_current, signal_denoised_current, Residual_prev,
-                                                noise_cov_current_eigvecs, noise_cov_current_nonzero_indices_int,
+    Residual_current = update_residual_singular(A, Y, 
+                                                signal_noisy_current, 
+                                                signal_denoised_current, 
+                                                Residual_prev, tau,
+                                                noise_cov_current_eigvecs, 
+                                                noise_cov_current_nonzero_indices_int,
                                                 noise_cov_current_zero_indices_int,
                                                 noise_cov_current_nonzero_eigvals_inv,
                                                 selected_rows, selected_rows_frac)
     return {'signal_denoised_current': signal_denoised_current,
             'Residual_current': Residual_current}
-
-
-def warm_up_2():
-    res1 = amp_iteration_nonsingular(np.eye(1000), np.eye(1000), 2*np.eye(1000), np.eye(1000), np.eye(1000), np.array([0]), 1.0)
-    res2 = amp_iteration_singular(np.eye(3), np.eye(3), 2*np.eye(3), np.eye(3), np.eye(3), np.arange(2), np.array([2]), np.ones(2, dtype = float), np.array([0]), 1.0)
-    return True
 
 
 def gen_iid_normal_mtx(num_measurements, signal_nrow, rng):
@@ -370,7 +393,7 @@ def run_amp_instance(**dict_params):
     max_iter = dict_params['max_iter']
     err_explosion_tol = dict_params['err_explosion_tol']
     selected_rows_frac = dict_params['selected_rows_frac']
-
+    
     iter_count = 0
     
     rng = np.random.default_rng(seed=seed(iter_count, k, n, N, B, err_tol, mc, sparsity_tol))
@@ -387,6 +410,10 @@ def run_amp_instance(**dict_params):
     dict_params['sparsity'] = sparsity
     dict_params['undersampling_ratio'] = n/N
     
+    tau_nominal = minimax_tau_threshold(sparsity, B)
+    
+    iter_count = 0
+    
     tick = time.perf_counter()
     
     signal_denoised_current = np.zeros((N, B), dtype = float)
@@ -396,9 +423,8 @@ def run_amp_instance(**dict_params):
                                signal_denoised_current,
                                sparsity_tol)
     rel_err = dict_observables['rel_err']
+    # rec_stats_dict['iter_count'] = iter_count
     min_rel_err = rel_err
-    # noise_cov_current = np.matmul(Residual_current.T, Residual_current)/n
-    # noise_cov_current_cov = np.cov(Residual_current.T)
     
     start_time_iteration_1 = time.perf_counter()
     iter_count = iter_count + 1
@@ -418,14 +444,19 @@ def run_amp_instance(**dict_params):
     D = np.round(D, 10)
     
     if np.all(D > 0):
+        tau = tau_nominal
         noise_cov_current_inv = np.matmul(U * 1.0/D, U.T)
-        dict_current = amp_iteration_nonsingular(A, Y, signal_denoised_prev, Residual_prev, noise_cov_current_inv, selected_rows, selected_rows_frac)
+        dict_current = amp_iteration_nonsingular(A, Y, signal_denoised_prev,
+                                                 Residual_prev,
+                                                 tau,
+                                                 noise_cov_current_inv, selected_rows, selected_rows_frac)
     else:
         nonzero_indices = (D > 0)
         nonzero_indices_int = np.where(nonzero_indices)[0]
         zero_indices_int = np.where(~nonzero_indices)[0]
+        tau = minimax_tau_threshold(sparsity, sum(nonzero_indices))
         D_nonzero_inv = 1/D[nonzero_indices_int]
-        dict_current = amp_iteration_singular(A, Y, signal_denoised_prev, Residual_prev, U, nonzero_indices_int, zero_indices_int, D_nonzero_inv, selected_rows, selected_rows_frac)
+        dict_current = amp_iteration_singular(A, Y, signal_denoised_prev, Residual_prev, tau, U, nonzero_indices_int, zero_indices_int, D_nonzero_inv, selected_rows, selected_rows_frac)
     
     signal_denoised_current = dict_current['signal_denoised_current']
     Residual_current = dict_current['Residual_current']
@@ -436,7 +467,7 @@ def run_amp_instance(**dict_params):
     rel_err = dict_observables['rel_err']
     min_rel_err = min(rel_err, min_rel_err)
     end_time_iteration_1 = time.perf_counter()
-
+    
     start_time_iteration_2_onwards = time.perf_counter()
     while iter_count<max_iter and rel_err>100*err_tol and rel_err<err_explosion_tol:
         iter_count = iter_count + 1
@@ -456,14 +487,19 @@ def run_amp_instance(**dict_params):
         D = np.round(D, 10)
         
         if np.all(D > 0):
+            tau = tau_nominal
             noise_cov_current_inv = np.matmul(U * 1.0/D, U.T)
-            dict_current = amp_iteration_nonsingular(A, Y, signal_denoised_prev, Residual_prev, noise_cov_current_inv, selected_rows, selected_rows_frac)
+            dict_current = amp_iteration_nonsingular(A, Y, signal_denoised_prev, Residual_prev, tau, noise_cov_current_inv, selected_rows, selected_rows_frac)
         else:
             nonzero_indices = (D > 0)
             nonzero_indices_int = np.where(nonzero_indices)[0]
             zero_indices_int = np.where(~nonzero_indices)[0]
+            tau = minimax_tau_threshold(sparsity, sum(nonzero_indices))
             D_nonzero_inv = 1/D[nonzero_indices_int]
-            dict_current = amp_iteration_singular(A, Y, signal_denoised_prev, Residual_prev, U, nonzero_indices_int, zero_indices_int, D_nonzero_inv, selected_rows, selected_rows_frac)
+            dict_current = amp_iteration_singular(A, Y, 
+                                                  signal_denoised_prev, 
+                                                  Residual_prev, 
+                                                  tau, U, nonzero_indices_int, zero_indices_int, D_nonzero_inv, selected_rows, selected_rows_frac)
         
         signal_denoised_current = dict_current['signal_denoised_current']
         Residual_current = dict_current['Residual_current']
@@ -588,12 +624,10 @@ def count_params(json_file: str):
 
 if __name__ == '__main__':
     # do_local_experiment()
-    read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_JS_approx_jacobian_poisson_jit.json')
+    read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_blocksoft_approx_jacobian_poisson_jit.json')
     # count_params('updated_undersampling_int_grids.json')
-    # do_coiled_experiment('exp_dicts/AMP_matrix_recovery_JS_approx_jacobian_poisson_jit.json')
+    # do_coiled_experiment('exp_dicts/AMP_matrix_recovery_blocksoft_approx_jacobian_poisson_jit.json')
     # do_test_exp()
     # do_test()
     # run_block_bp_experiment('block_bp_inputs.json')
-
-
 
