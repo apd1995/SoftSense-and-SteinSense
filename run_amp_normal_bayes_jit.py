@@ -13,8 +13,9 @@ from pandas import DataFrame, concat
 import time
 
 from EMS.manager import do_on_cluster, get_gbq_credentials, do_test_experiment, read_json, unroll_experiment
-from dask.distributed import Client, LocalCluster
 import dask
+from dask.distributed import Client, LocalCluster
+from dask_jobqueue import SLURMCluster
 import coiled
 import logging
 import json
@@ -431,6 +432,20 @@ def test_experiment() -> dict:
     return exp
 # dict_params = test_experiment()
 
+
+def do_sherlock_experiment(json_file: str):
+    exp = read_json(json_file)
+    nodes = 320
+    with SLURMCluster(queue='normal,owners,donoho,hns,stat',
+                      cores=1, memory='4GiB', processes=1,
+                      walltime='24:00:00') as cluster:
+        cluster.scale(jobs=nodes)
+        logging.info(cluster.job_script())
+        with Client(cluster) as client:
+            do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
+        cluster.scale(0)
+
+
 def do_coiled_experiment(json_file: str):
     exp = read_json(json_file)
     # logging.info(f'{json.dumps(dask.config.config, indent=4)}')
@@ -490,9 +505,10 @@ def count_params(json_file: str):
 
 if __name__ == '__main__':
     # do_local_experiment()
-    read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_normal_bayes_jit.json')
+    # read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_normal_bayes_jit.json')
     # count_params('updated_undersampling_int_grids.json')
-    # do_coiled_experiment('exp_dicts/AMP_matrix_recovery_normal_bayes_approx_jacobian_2.json')
+    # do_coiled_experiment('exp_dicts/AMP_matrix_recovery_normal_bayes_jit.json')
+    do_sherlock_experiment('exp_dicts/AMP_matrix_recovery_normal_bayes_jit.json')
     # do_test_exp()
     # do_test()
     # run_block_bp_experiment('block_bp_inputs.json')
