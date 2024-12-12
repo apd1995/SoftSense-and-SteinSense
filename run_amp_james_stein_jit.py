@@ -377,8 +377,8 @@ def run_amp_instance(**dict_params):
     rng = np.random.default_rng(seed=seed(iter_count, k, n, N, B, err_tol, mc, sparsity_tol))
     signal_true = np.zeros((N, B), dtype=float)
     nonzero_indices = rng.choice(range(N), k, replace=False)
-    signal_true[nonzero_indices, :] = rng.normal(0, 1, (k, B))
-    # signal_true[nonzero_indices, :] = rng.poisson(2, (k, B))
+    # signal_true[nonzero_indices, :] = rng.normal(0, 1, (k, B))
+    signal_true[nonzero_indices, :] = rng.poisson(2, (k, B))
     signal_true = np.array(signal_true)
    
     A = gen_iid_normal_mtx(n, N, rng)/np.sqrt(n)
@@ -579,10 +579,10 @@ def count_params(json_file: str):
 
 if __name__ == '__main__':
     # do_local_experiment()
-    # read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_JS_normal_jit.json')
+    # read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_JS_poisson_jit.json')
     # count_params('updated_undersampling_int_grids.json')
-    # do_coiled_experiment('exp_dicts/AMP_matrix_recovery_JS_normal_jit.json')
-    do_sherlock_experiment('exp_dicts/AMP_matrix_recovery_JS_normal_jit_sherlock.json')
+    # do_coiled_experiment('exp_dicts/AMP_matrix_recovery_JS_poisson_jit.json')
+    do_sherlock_experiment('exp_dicts/AMP_matrix_recovery_JS_poisson_jit_sherlock.json')
     # do_test_exp()
     # do_test()
     # run_block_bp_experiment('block_bp_inputs.json')
