@@ -6,20 +6,20 @@ dependencies:
   - blas[build=mkl]
   - numpy
   - python=3.10
-  - icu>=70.1
-  - cairo>=1.16.0
+#  - icu>=70.1
+#  - cairo>=1.16.0
   - pandas
   - autograd
   - scipy
   - google-auth
-  - pandas-gbq>=0.19.2
+#  - pandas-gbq>=0.19.2
   - cvxpy
   - jax
   - dask
   - coiled
   - sqlalchemy
-  - pg8000
-  - cloud-sql-python-connector
+#  - pg8000
+#  - cloud-sql-python-connector
 variables:
   MKL_NUM_THREADS: '1'
   OPENBLAS_NUM_THREADS: '1'
