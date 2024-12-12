@@ -345,7 +345,8 @@ def run_amp_instance(**dict_params):
                                sparsity_tol)
     rel_err = dict_observables['rel_err']
     min_rel_err = rel_err
-    noise_cov_current = np.matmul(Residual_current.T, Residual_current)/n
+    # noise_cov_current = np.matmul(Residual_current.T, Residual_current)/n
+    noise_cov_current_cov = np.cov(Residual_current.T)
     
     while iter_count<max_iter and rel_err>100*err_tol and rel_err<err_explosion_tol:
         
@@ -357,9 +358,10 @@ def run_amp_instance(**dict_params):
         signal_denoised_current = None
         Residual_prev = Residual_current
         Residual_current = None
-        noise_cov_current = np.matmul(Residual_prev.T, Residual_prev)/n
+        # noise_cov_current = np.matmul(Residual_prev.T, Residual_prev)/n
+        noise_cov_current_cov = np.cov(Residual_prev.T)
         
-        D, U = np.linalg.eigh(noise_cov_current)
+        D, U = np.linalg.eigh(noise_cov_current_cov)
         D = np.round(D, 10)
         
         if np.all(D > 0):
@@ -429,6 +431,7 @@ def do_coiled_experiment(json_file: str):
     exp = read_json(json_file)
     logging.info(f'{json.dumps(dask.config.config, indent=4)}')
     software_environment = 'adonoho/amp_matrix_recovery'
+    # coiled.delete_software_environment(name=software_environment)
     logging.info('Creating environment.')
     coiled.create_software_environment(
         name=software_environment,
@@ -438,7 +441,7 @@ def do_coiled_experiment(json_file: str):
         ]
     )
     with coiled.Cluster(software=software_environment,
-                        n_workers=960, worker_vm_types=['n1-standard-1'],
+                        n_workers=320, worker_vm_types=['n1-standard-1'],
                         use_best_zone=True, spot_policy='spot') as cluster:
         with Client(cluster) as client:
             do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
@@ -484,9 +487,9 @@ def count_params(json_file: str):
 
 if __name__ == '__main__':
     # do_local_experiment()
-    # read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_JS_approx_jacobian_normal.json')
+    # read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_JS_approx_jacobian_normal_cov_random_undersampling.json')
     # count_params('updated_undersampling_int_grids.json')
-    do_coiled_experiment('exp_dicts/AMP_matrix_recovery_JS_approx_jacobian_normal.json')
+    do_coiled_experiment('exp_dicts/AMP_matrix_recovery_JS_approx_jacobian_normal_cov_random_undersampling.json')
     # do_test_exp()
     # do_test()
     # run_block_bp_experiment('block_bp_inputs.json')
