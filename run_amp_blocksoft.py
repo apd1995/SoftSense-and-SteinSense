@@ -52,12 +52,9 @@ def gen_iid_normal_mtx(num_measurements, signal_nrow, rng):
 
 def recovery_stats(X_true: float,
               X_rec: float,
-              sparsity_tol: float,
-              time_seconds: float):
+              sparsity_tol: float):
     
     N, B = X_true.shape
-    
-    start_time = time.time()
 
     zero_indices_true = (np.apply_along_axis(np.linalg.norm, 1, X_true)==0)
     zero_indices_rec = (np.apply_along_axis(np.linalg.norm, 1, X_rec)/np.sqrt(B)<=sparsity_tol)
@@ -80,10 +77,6 @@ def recovery_stats(X_true: float,
                 'tpr': sum(zero_indices_true * zero_indices_rec)/max(1, sum(zero_indices_true)),
                 'tnr': sum(nonzero_indices_true * nonzero_indices_rec)/max(1, sum(nonzero_indices_true))
                 }
-    
-    end_time = time.time()
-    
-    dict_observables['time_seconds'] = round(time_seconds + end_time - start_time, 2)
     
     return dict_observables
 
@@ -117,31 +110,25 @@ def run_amp_instance(**dict_params):
     
     iter_count = 0
     
-    start_time = time.time()
+    tick = time.perf_counter()
     
     signal_denoised_current = np.zeros((N, B), dtype = float)
     Residual_current = Y
     
-    end_time = time.time()
-    time_seconds = round(end_time - start_time, 2)
-    
-    rec_stats_dict = recovery_stats(signal_true,
+    dict_observables = recovery_stats(signal_true,
                                signal_denoised_current,
-                               sparsity_tol,
-                               time_seconds)
-    rel_err = rec_stats_dict['rel_err']
-    rec_stats_dict['iter_count'] = iter_count
-    running_min_rel_err = rel_err
-    rec_stats_dict['running_min_rel_err'] = running_min_rel_err
-    dict_observables = rec_stats_dict
-    for key in list(dict_observables):
-        dict_observables[key] = [dict_observables[key]]
+                               sparsity_tol)
+    rel_err = dict_observables['rel_err']
+    # rec_stats_dict['iter_count'] = iter_count
+    min_rel_err = rel_err
+    # rec_stats_dict['min_rel_err'] = min_rel_err
+    # dict_observables = rec_stats_dict
+    # for key in list(dict_observables):
+    #     dict_observables[key] = [dict_observables[key]]
     
     while iter_count<max_iter and rel_err>err_tol and rel_err<err_explosion_tol:
         
         iter_count = iter_count + 1
-        
-        start_time = time.time()
         
         signal_denoised_prev = signal_denoised_current
         Residual_prev = Residual_current
@@ -150,21 +137,23 @@ def run_amp_instance(**dict_params):
         signal_denoised_current = dict_current['signal_denoised_current']
         Residual_current = dict_current['Residual_current']
         
-        end_time = time.time()
-        time_seconds = end_time - start_time
-        
-        rec_stats_dict = recovery_stats(signal_true,
+        dict_observables = recovery_stats(signal_true,
                                    signal_denoised_current,
-                                   sparsity_tol,
-                                   time_seconds)
-        rel_err = rec_stats_dict['rel_err']
-        rec_stats_dict['iter_count'] = iter_count
-        running_min_rel_err = min(rel_err, running_min_rel_err)
-        rec_stats_dict['running_min_rel_err'] = running_min_rel_err
-        for key in list(dict_observables):
-            dict_observables[key] = dict_observables[key] + [rec_stats_dict[key]]
+                                   sparsity_tol)
+        rel_err = dict_observables['rel_err']
+        # rec_stats_dict['iter_count'] = iter_count
+        min_rel_err = min(rel_err, min_rel_err)
+        # rec_stats_dict['running_min_rel_err'] = running_min_rel_err
+        # for key in list(dict_observables):
+        #     dict_observables[key] = dict_observables[key] + [rec_stats_dict[key]]
+    
+    tock = time.perf_counter() - tick
+    dict_observables['min_rel_err'] = min_rel_err
+    dict_observables['iter_count'] = iter_count
+    dict_observables['time_seconds'] = round(tock, 2)
 
-    return DataFrame(data = {**dict_params, **dict_observables})
+    #return DataFrame(data = {**dict_params, **dict_observables}).set_index('iter_count')
+    return DataFrame(data = {**dict_params, **dict_observables}, index = [0])
 
 
 
@@ -263,7 +252,7 @@ def count_params(json_file: str):
 
 if __name__ == '__main__':
     # do_local_experiment()
-    read_and_do_local_experiment('AMP_matrix_recovery_01.json')
+    read_and_do_local_experiment('AMP_matrix_recovery_blocksoft_02.json')
     # count_params('updated_undersampling_int_grids.json')
     # do_coiled_experiment()
     # do_test_exp()
