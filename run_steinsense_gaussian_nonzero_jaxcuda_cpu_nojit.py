@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Mon Jul  7 11:25:27 2025
+Created on Sat Jul 12 18:12:12 2025
 
 @author: apratimdey
 """
 
 import jax.numpy as jnp
-from jax import random, jit, lax, jacfwd, vmap
+from jax import random, lax, jacfwd, vmap
 import jax
-from functools import partial
 from EMS.manager_new import read_json, do_on_cluster, get_gbq_credentials
 from dask.distributed import Client, LocalCluster
 from dask_jobqueue import SLURMCluster
@@ -29,7 +28,7 @@ dask.config.set({
     "distributed.nanny.timeouts.startup": "300s"   # 5 minutes
 })
 
-CHUNK=100
+CHUNK = 100
 
 def seed(gaussian_mean: float,
          nonzero_rows: float,
@@ -67,20 +66,16 @@ def js_singular_vec(y, eigvecs, inv_full):
 
 
 # Vectorized versions (compiled once)
-v_js_nonsingular = jit(vmap(js_nonsingular_vec, in_axes=(0, None)))
-v_js_singular    = jit(vmap(js_singular_vec,
-                            in_axes=(0, None, None)))
+v_js_nonsingular = vmap(js_nonsingular_vec, in_axes=(0, None))
+v_js_singular    = vmap(js_singular_vec,
+                            in_axes=(0, None, None))
 
 # Precompute Jacobians of the row-wise functions, batched over rows
-jac_js_nonsingular = jit(
-    vmap(jacfwd(js_nonsingular_vec, argnums=0), in_axes=(0, None))
-)
-jac_js_singular = jit(
-    vmap(jacfwd(js_singular_vec, argnums=0), in_axes=(0, None, None))
-)
+jac_js_nonsingular = vmap(jacfwd(js_nonsingular_vec, argnums=0), in_axes=(0, None))
+
+jac_js_singular = vmap(jacfwd(js_singular_vec, argnums=0), in_axes=(0, None, None))
 
 
-@jit
 def js_onsager_nonsingular(
     X:        jnp.ndarray,     # shape (N, B)
     Z:        jnp.ndarray,     # shape (n, B)
@@ -94,7 +89,6 @@ def js_onsager_nonsingular(
     sumJ    = jnp.sum(J, axis=0)
     return (Z @ sumJ.T) / Z.shape[0]
 
-@jit
 def js_onsager_singular(X, Z, U, inv_full):
     J = jac_js_singular(X, U, inv_full)
     sumJ    = jnp.sum(J, axis=0)
@@ -103,7 +97,6 @@ def js_onsager_singular(X, Z, U, inv_full):
 # ─── 2) FUSED AMP LOOP ─────────────────────────────────────────────────
 
 
-@jit
 def recovery_stats_jax(X_true, X_rec, A, Y_true, sparsity_tol):
     """
     Returns the same dictionary as your original `recovery_stats`
@@ -162,7 +155,6 @@ def recovery_stats_jax(X_true, X_rec, A, Y_true, sparsity_tol):
     return stats
 
 
-@partial(jit, static_argnames=("steps",))
 def amp_chunk(A, Y, X0, R0, err_tol, err_explosion_tol, *, X_true, steps):
     n, N = A.shape
 
@@ -283,7 +275,7 @@ def read_and_do_local_experiment(json_file: str):
 
 
 if __name__ == '__main__':
-    do_sherlock_experiment('exp_dicts/AMP_matrix_recovery_JS_gaussian_nonzero_jaxcuda.json')
+    do_sherlock_experiment('exp_dicts/AMP_matrix_recovery_JS_gaussian_nonzero_jaxcuda_nojit.json')
     # read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_JS_gaussian_nonzero_jaxcuda.json')
     # d = run_amp_instance(**{'gaussian_mean': 0,
     #                 'nonzero_rows': 500,
