@@ -333,18 +333,18 @@ def read_and_do_local_experiment(json_file: str):
 
 
 if __name__ == '__main__':
-    # do_sherlock_experiment('exp_dicts/AMP_matrix_recovery_JS_gaussian_nonzero_jaxcuda.json')
+    do_sherlock_experiment('exp_dicts/AMP_matrix_recovery_JS_gaussian_nonzero_jaxcuda.json')
     # read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_JS_gaussian_nonzero_jaxcuda.json')
-    d = run_amp_instance(**{'gaussian_mean': 0,
-                    'nonzero_rows': 50,
-                    'signal_nrow': 500,
-                    'signal_ncol': 50,
-                    'num_measurements': 50,
-                    'err_tol': 0.0001,
-                    'sparsity_tol': 0.0001,
-                    'mc': 4,
-                    'err_explosion_tol': 100,
-                    'max_iter': 100})
-    print(d['rel_err'])
+    # d = run_amp_instance(**{'gaussian_mean': 0,
+    #                 'nonzero_rows': 50,
+    #                 'signal_nrow': 500,
+    #                 'signal_ncol': 50,
+    #                 'num_measurements': 50,
+    #                 'err_tol': 0.0001,
+    #                 'sparsity_tol': 0.0001,
+    #                 'mc': 4,
+    #                 'err_explosion_tol': 100,
+    #                 'max_iter': 100})
+    # print(d['rel_err'])
 
 
