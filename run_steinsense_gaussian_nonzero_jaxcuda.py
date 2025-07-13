@@ -191,33 +191,49 @@ def amp_chunk(A, Y, X0, R0, err_tol, err_explosion_tol, *, X_true, steps):
     n, N = A.shape
 
     def step(carry, _):
-        X, R = carry
-        X_noisy   = X + A.T @ R
-        Cov       = jnp.cov(R.T)
-        D, U      = jnp.linalg.eigh(Cov)
-        D         = jnp.round(D, 10)
+        X, R, stop_flag = carry
+
+        X_noisy = X + A.T @ R
+        Cov = jnp.cov(R.T)
+        D, U = jnp.linalg.eigh(Cov)
+        D = jnp.round(D, 10)
         nonsingular_branch = jnp.all(D > 0)
 
         def do_nonsingular():
-            Sigma_inv = (U * (1 / D)[None, :]) @ U.T
-            X_denoised  = v_js_nonsingular(X_noisy, Sigma_inv)
-            Rn  = Y - A @ X_denoised + js_onsager_nonsingular(X_noisy, R, Sigma_inv)
+            Sigma_inv = (U * (1 / (D + 1e-8))[None, :]) @ U.T
+            X_denoised = v_js_nonsingular(X_noisy, Sigma_inv)
+            Rn = Y - A @ X_denoised + js_onsager_nonsingular(X_noisy, R, Sigma_inv)
             return X_denoised, Rn
 
         def do_singular():
             inv_full = jnp.where(D > 0, 1 / D, 0.0)
-            X_denoised  = v_js_singular(X_noisy, U, inv_full)
-            Rn  = Y - A @ X_denoised + js_onsager_singular(X_noisy, R, U, inv_full)
+            X_denoised = v_js_singular(X_noisy, U, inv_full)
+            Rn = Y - A @ X_denoised + js_onsager_singular(X_noisy, R, U, inv_full)
             return X_denoised, Rn
 
         X_new, R_new = lax.cond(nonsingular_branch, do_nonsingular, do_singular)
-        return (X_new, R_new), None
 
-    (Xf, Rf), _ = lax.scan(step, (X0, R0), None, length=steps)
-    rel   = jnp.linalg.norm(Xf - X_true) / (jnp.linalg.norm(X_true) + 1e-12)
-    stop  = (rel < err_tol) | (rel > err_explosion_tol)
-    
-    return Xf, Rf, rel, stop, steps
+        # Compute relative error
+        rel = jnp.linalg.norm(X_new - X_true) / (jnp.linalg.norm(X_true) + 1e-12)
+        new_stop = (rel < err_tol) | (rel > err_explosion_tol)
+
+        # Freeze update if stop already triggered
+        X_final = jnp.where(stop_flag, X, X_new)
+        R_final = jnp.where(stop_flag, R, R_new)
+        stop_flag = stop_flag | new_stop
+
+        return (X_final, R_final, stop_flag), rel
+
+    (Xf, Rf, stop_final), rels = lax.scan(
+        step, (X0, R0, False), None, length=steps
+    )
+
+    # rels is now [steps]-long vector of relative errors
+    # Final rel = last rel before stop
+    idx = jnp.argmax((rels < err_tol) | (rels > err_explosion_tol))  # first hit
+    rel_at_stop = rels[idx]
+
+    return Xf, Rf, rel_at_stop, stop_final, steps
 
 
 def run_amp_instance(**dict_params):
@@ -289,7 +305,7 @@ def do_sherlock_experiment(json_file: str):
     exp = read_json(json_file)
     with SLURMCluster(queue='donoho,gpu,stat,hns,owners,normal',
                       cores=1, memory='50GiB', processes=1,
-                      walltime='24:00:00', job_extra=['--gres=gpu:1'], death_timeout='60s') as cluster:
+                      walltime='24:00:00', job_extra_directives=['--gres=gpu:1'], death_timeout='60s') as cluster:
         cluster.adapt(minimum = 10, maximum = 50, target_duration = "10h", interval = "30s")
         logging.info(cluster.job_script())
         with Client(cluster) as client:
