@@ -8,6 +8,7 @@ Created on Mon Jul  7 11:25:27 2025
 
 import jax.numpy as jnp
 from jax import random, jit, lax, jacfwd, vmap
+import jax
 from functools import partial
 from EMS.manager_new import read_json, do_on_cluster, get_gbq_credentials
 from dask.distributed import Client, LocalCluster
@@ -20,7 +21,6 @@ log_gbq.setLevel(logging.DEBUG)
 log_gbq.addHandler(logging.StreamHandler())
 logging.getLogger('jax').setLevel(logging.ERROR)
 import time
-
 import dask.config
 dask.config.set({
     "distributed.nanny.timeouts.startup": "300s"   # 5 minutes
@@ -61,33 +61,6 @@ def js_singular_vec(y, eigvecs, inv_full):
                       0.0)
     y0_hat = coeff * y0 * (inv_full > 0) + y0 * (inv_full == 0)
     return eigvecs @ y0_hat              # (B,)
-
-
-# def js_singular_vec(
-#     y: jnp.ndarray,            # (B,)
-#     eigvecs: jnp.ndarray,      # (B, B)
-#     nz_idx:   jnp.ndarray,     # (k,)
-#     inv_vals: jnp.ndarray      # (k,)
-# ) -> jnp.ndarray:
-#     # 1a) Whiten into independent coords
-#     y0 = eigvecs.T @ y                     # (B,)
-
-#     # 1b) Shrink only the nonzero‐precision subspace
-#     y_nz = y0[nz_idx]                      # (k,)
-#     quad = jnp.sum(y_nz**2 * inv_vals)     # scalar
-#     d0   = inv_vals.shape[0]
-#     coeff = jnp.where(quad > (d0 - 2),
-#                       1 - (d0 - 2) / quad,
-#                       0.0)                # scalar
-#     y_nz_hat = y_nz * coeff                # (k,)
-
-#     # 1c) Reassemble in whitened basis
-#     y0_hat = y0.at[nz_idx].set(y_nz_hat)   # (B,)
-#     # zero‐precision coords stay same:
-#     # y0_hat = y0_hat.at[z_idx].set(y0[z_idx])  # optional, y0_hat already has y0 at z_idx
-
-#     # 1d) Unwhiten back to original space
-#     return eigvecs @ y0_hat                # (B,)
 
 
 # Vectorized versions (compiled once)
@@ -192,46 +165,46 @@ def amp_chunk(A, Y, X0, R0, err_tol, err_explosion_tol, *, X_true, steps):
 
     def step(carry, _):
         X, R, stop_flag = carry
-
-        X_noisy = X + A.T @ R
-        Cov = jnp.cov(R.T)
-        D, U = jnp.linalg.eigh(Cov)
-        D = jnp.round(D, 10)
-        nonsingular_branch = jnp.all(D > 0)
-
-        def do_nonsingular():
-            Sigma_inv = (U * (1 / (D + 1e-8))[None, :]) @ U.T
-            X_denoised = v_js_nonsingular(X_noisy, Sigma_inv)
-            Rn = Y - A @ X_denoised + js_onsager_nonsingular(X_noisy, R, Sigma_inv)
-            return X_denoised, Rn
-
-        def do_singular():
-            inv_full = jnp.where(D > 0, 1 / D, 0.0)
-            X_denoised = v_js_singular(X_noisy, U, inv_full)
-            Rn = Y - A @ X_denoised + js_onsager_singular(X_noisy, R, U, inv_full)
-            return X_denoised, Rn
-
-        X_new, R_new = lax.cond(nonsingular_branch, do_nonsingular, do_singular)
-
+        
         # Compute relative error
-        rel = jnp.linalg.norm(X_new - X_true) / (jnp.linalg.norm(X_true) + 1e-12)
+        rel = jnp.linalg.norm(X - X_true) / (jnp.linalg.norm(X_true) + 1e-12)
         new_stop = (rel < err_tol) | (rel > err_explosion_tol)
+        
+        def do_compute(_):
 
-        # Freeze update if stop already triggered
-        X_final = jnp.where(stop_flag, X, X_new)
-        R_final = jnp.where(stop_flag, R, R_new)
+            X_noisy = X + A.T @ R
+            Cov = jnp.cov(R.T)
+            D, U = jnp.linalg.eigh(Cov)
+            D = jnp.round(D, 10)
+            nonsingular_branch = jnp.all(D > 0)
+    
+            def do_nonsingular():
+                Sigma_inv = (U * (1 / (D + 1e-8))[None, :]) @ U.T
+                X_denoised = v_js_nonsingular(X_noisy, Sigma_inv)
+                Rn = Y - A @ X_denoised + js_onsager_nonsingular(X_noisy, R, Sigma_inv)
+                return X_denoised, Rn
+    
+            def do_singular():
+                inv_full = jnp.where(D > 0, 1 / D, 0)
+                X_denoised = v_js_singular(X_noisy, U, inv_full)
+                Rn = Y - A @ X_denoised + js_onsager_singular(X_noisy, R, U, inv_full)
+                return X_denoised, Rn
+    
+            return lax.cond(nonsingular_branch, do_nonsingular, do_singular)
+        
+        X_new, R_new = lax.cond(new_stop, lambda _: (X, R), do_compute, operand=None)
+
         stop_flag = stop_flag | new_stop
 
-        return (X_final, R_final, stop_flag), rel
+        return (X_new, R_new, stop_flag), rel
 
     (Xf, Rf, stop_final), rels = lax.scan(
         step, (X0, R0, False), None, length=steps
     )
-
-    # rels is now [steps]-long vector of relative errors
-    # Final rel = last rel before stop
-    idx = jnp.argmax((rels < err_tol) | (rels > err_explosion_tol))  # first hit
-    rel_at_stop = rels[idx]
+    
+    hit = (rels < err_tol) | (rels > err_explosion_tol)
+    idx = jnp.argmax(hit)
+    rel_at_stop = jnp.where(hit.any(), rels[idx], rels[-1])
 
     return Xf, Rf, rel_at_stop, stop_final, steps
 
@@ -280,7 +253,8 @@ def run_amp_instance(**dict_params):
 
         # ---- full statistics  (GPU → host) ------
         stats_gpu = recovery_stats_jax(X_true, X, A, Y, sparsity_tol)
-        observables = {k: v.item() for k, v in stats_gpu.items()}    # Device → Python
+        stats_host  = jax.device_get(stats_gpu)
+        observables = {k: v.item() for k, v in stats_host.items()}    # Device → Python
         time_since_start = time.perf_counter() - start_time
         observables.update({
             'iter_count'          : int(it),
@@ -305,8 +279,8 @@ def do_sherlock_experiment(json_file: str):
     exp = read_json(json_file)
     with SLURMCluster(queue='donoho,gpu,stat,hns,owners,normal',
                       cores=1, memory='50GiB', processes=1,
-                      walltime='24:00:00', job_extra_directives=['--gres=gpu:1'], death_timeout='60s') as cluster:
-        cluster.adapt(minimum = 10, maximum = 50, target_duration = "10h", interval = "30s")
+                      walltime='24:00:00', job_extra_directives=['--gres=gpu:1', '--constraint="GPU_SKU:A100_SXM4|GPU_SKU:H100_SXM5"'], death_timeout='60s') as cluster:
+        cluster.adapt(minimum = 50, maximum = 100, target_duration = "10h", interval = "30s")
         logging.info(cluster.job_script())
         with Client(cluster) as client:
             do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
@@ -324,4 +298,16 @@ def read_and_do_local_experiment(json_file: str):
 if __name__ == '__main__':
     do_sherlock_experiment('exp_dicts/AMP_matrix_recovery_JS_gaussian_nonzero_jaxcuda.json')
     # read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_JS_gaussian_nonzero_jaxcuda.json')
+    # d = run_amp_instance(**{'gaussian_mean': 0,
+    #                 'nonzero_rows': 50,
+    #                 'signal_nrow': 1000,
+    #                 'signal_ncol': 50,
+    #                 'num_measurements': 100,
+    #                 'err_tol': 0.0001,
+    #                 'sparsity_tol': 0.0001,
+    #                 'mc': 4,
+    #                 'err_explosion_tol': 100,
+    #                 'max_iter': 1000})
+    # print(d['rel_err'])
+
 
