@@ -6,8 +6,9 @@ Created on Mon Jul  7 11:25:27 2025
 @author: apratimdey
 """
 
+import numpy as np
 import jax.numpy as jnp
-from jax import random, jit, lax, jacfwd, vmap
+from jax import jit, lax, jacfwd, vmap, config
 import jax
 from functools import partial
 from EMS.manager_new import read_json, do_on_cluster, get_gbq_credentials
@@ -23,6 +24,8 @@ logging.getLogger('jax').setLevel(logging.ERROR)
 import time
 import os
 os.environ["JAX_PLATFORMS"] = "cpu"
+
+config.update("jax_enable_x64", False)
 
 import dask.config
 dask.config.set({
@@ -168,83 +171,48 @@ def amp_chunk(A, Y, X0, R0, err_tol, err_explosion_tol, *, X_true, steps):
 
     def step(carry, _):
         X, R, stop_flag = carry
-
-        X_noisy = X + A.T @ R
-        Cov = jnp.cov(R.T)
-        D, U = jnp.linalg.eigh(Cov)
-        D = jnp.round(D, 10)
-        nonsingular_branch = jnp.all(D > 0)
-
-        def do_nonsingular():
-            Sigma_inv = (U * (1 / (D + 1e-8))[None, :]) @ U.T
-            X_denoised = v_js_nonsingular(X_noisy, Sigma_inv)
-            Rn = Y - A @ X_denoised + js_onsager_nonsingular(X_noisy, R, Sigma_inv)
-            return X_denoised, Rn
-
-        def do_singular():
-            inv_full = jnp.where(D > 0, 1 / D, 0.0)
-            X_denoised = v_js_singular(X_noisy, U, inv_full)
-            Rn = Y - A @ X_denoised + js_onsager_singular(X_noisy, R, U, inv_full)
-            return X_denoised, Rn
-
-        X_new, R_new = lax.cond(nonsingular_branch, do_nonsingular, do_singular)
-
+        
         # Compute relative error
-        rel = jnp.linalg.norm(X_new - X_true) / (jnp.linalg.norm(X_true) + 1e-12)
+        rel = jnp.linalg.norm(X - X_true) / (jnp.linalg.norm(X_true) + 1e-12)
         new_stop = (rel < err_tol) | (rel > err_explosion_tol)
+        
+        def do_compute(_):
 
-        # Freeze update if stop already triggered
-        X_final = jnp.where(stop_flag, X, X_new)
-        R_final = jnp.where(stop_flag, R, R_new)
+            X_noisy = X + A.T @ R
+            Cov = jnp.cov(R.T)
+            D, U = jnp.linalg.eigh(Cov)
+            D = jnp.round(D, 10)
+            nonsingular_branch = jnp.all(D > 0)
+    
+            def do_nonsingular():
+                Sigma_inv = (U * (1 / (D + 1e-8))[None, :]) @ U.T
+                X_denoised = v_js_nonsingular(X_noisy, Sigma_inv)
+                Rn = Y - A @ X_denoised + js_onsager_nonsingular(X_noisy, R, Sigma_inv)
+                return X_denoised, Rn
+    
+            def do_singular():
+                inv_full = jnp.where(D > 0, 1 / D, 0)
+                X_denoised = v_js_singular(X_noisy, U, inv_full)
+                Rn = Y - A @ X_denoised + js_onsager_singular(X_noisy, R, U, inv_full)
+                return X_denoised, Rn
+    
+            return lax.cond(nonsingular_branch, do_nonsingular, do_singular)
+        
+        X_new, R_new = lax.cond(new_stop, lambda _: (X, R), do_compute, operand=None)
+
         stop_flag = stop_flag | new_stop
 
-        return (X_final, R_final, stop_flag), rel
+        return (X_new, R_new, stop_flag), rel
 
     (Xf, Rf, stop_final), rels = lax.scan(
         step, (X0, R0, False), None, length=steps
     )
-
-    # rels is now [steps]-long vector of relative errors
-    # Final rel = last rel before stop
-    idx = jnp.argmax((rels < err_tol) | (rels > err_explosion_tol))  # first hit
-    rel_at_stop = rels[idx]
+    
+    hit = (rels < err_tol) | (rels > err_explosion_tol)
+    idx = jnp.argmax(hit)
+    rel_at_stop = jnp.where(hit.any(), rels[idx], rels[-1])
 
     return Xf, Rf, rel_at_stop, stop_final, steps
-
-
-# @partial(jit, static_argnames=("steps",))
-# def amp_chunk(A, Y, X0, R0, err_tol, err_explosion_tol, *, X_true, steps):
-#     n, N = A.shape
-
-#     def step(carry, _):
-#         X, R = carry
-#         X_noisy   = X + A.T @ R
-#         Cov       = jnp.cov(R.T)
-#         D, U      = jnp.linalg.eigh(Cov)
-#         D         = jnp.round(D, 10)
-#         nonsingular_branch = jnp.all(D > 0)
-
-#         def do_nonsingular():
-#             Sigma_inv = (U * (1 / D)[None, :]) @ U.T
-#             X_denoised  = v_js_nonsingular(X_noisy, Sigma_inv)
-#             Rn  = Y - A @ X_denoised + js_onsager_nonsingular(X_noisy, R, Sigma_inv)
-#             return X_denoised, Rn
-
-#         def do_singular():
-#             inv_full = jnp.where(D > 0, 1 / D, 0.0)
-#             X_denoised  = v_js_singular(X_noisy, U, inv_full)
-#             Rn  = Y - A @ X_denoised + js_onsager_singular(X_noisy, R, U, inv_full)
-#             return X_denoised, Rn
-
-#         X_new, R_new = lax.cond(nonsingular_branch, do_nonsingular, do_singular)
-#         return (X_new, R_new), None
-
-#     # with jax.profiler.trace("/tmp/jax-trace", create_perfetto_link=True):
-#     (Xf, Rf), _ = lax.scan(step, (X0, R0), None, length=steps)
-#     rel   = jnp.linalg.norm(Xf - X_true) / (jnp.linalg.norm(X_true) + 1e-12)
-#     stop  = (rel < err_tol) | (rel > err_explosion_tol)
-    
-#     return Xf, Rf, rel, stop, steps
 
 
 def run_amp_instance(**dict_params):
@@ -262,13 +230,15 @@ def run_amp_instance(**dict_params):
     start_time = time.perf_counter()
     
     seed_val = seed(mu, k, n, N, B, err_tol, mc, sparsity_tol)
-    key = random.PRNGKey(seed_val)
+    rng = np.random.default_rng(seed_val)
 
-    nz_idx = random.choice(key, N, (k,), replace=False)
-    nonzero_vals = random.normal(key, (k, B)) + mu
+    nz_idx = rng.choice(N, k, replace=False)
+    nonzero_vals = rng.normal(mu, 1, (k, B))
     X_true = jnp.zeros((N, B)).at[nz_idx].set(nonzero_vals)
     
-    A = random.normal(key, (n, N)) / jnp.sqrt(n)
+    print(nonzero_vals[1,:])
+    
+    A = rng.normal(0, 1, (n, N)) / jnp.sqrt(n)
     Y = A @ X_true
 
     X, R = jnp.zeros_like(X_true), Y
@@ -333,18 +303,18 @@ def read_and_do_local_experiment(json_file: str):
 
 
 if __name__ == '__main__':
-    do_sherlock_experiment('exp_dicts/AMP_matrix_recovery_JS_gaussian_nonzero_jaxcuda.json')
+    # do_sherlock_experiment('exp_dicts/AMP_matrix_recovery_JS_gaussian_nonzero_jaxcuda.json')
     # read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_JS_gaussian_nonzero_jaxcuda.json')
-    # d = run_amp_instance(**{'gaussian_mean': 0,
-    #                 'nonzero_rows': 50,
-    #                 'signal_nrow': 500,
-    #                 'signal_ncol': 50,
-    #                 'num_measurements': 50,
-    #                 'err_tol': 0.0001,
-    #                 'sparsity_tol': 0.0001,
-    #                 'mc': 4,
-    #                 'err_explosion_tol': 100,
-    #                 'max_iter': 100})
-    # print(d['rel_err'])
+    d = run_amp_instance(**{'gaussian_mean': 0,
+                    'nonzero_rows': 50,
+                    'signal_nrow': 1000,
+                    'signal_ncol': 50,
+                    'num_measurements': 100,
+                    'err_tol': 0.0001,
+                    'sparsity_tol': 0.0001,
+                    'mc': 4,
+                    'err_explosion_tol': 100,
+                    'max_iter': 1000})
+    print(d['rel_err'])
 
 

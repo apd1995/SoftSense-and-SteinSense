@@ -6,8 +6,9 @@ Created on Mon Jul  7 11:25:27 2025
 @author: apratimdey
 """
 
+import numpy as np
 import jax.numpy as jnp
-from jax import random, jit, lax, jacfwd, vmap
+from jax import jit, lax, jacfwd, vmap, config
 import jax
 from functools import partial
 from EMS.manager_new import read_json, do_on_cluster, get_gbq_credentials
@@ -25,6 +26,8 @@ import dask.config
 dask.config.set({
     "distributed.nanny.timeouts.startup": "300s"   # 5 minutes
 })
+
+config.update("jax_enable_x64", False)
 
 CHUNK = 100
 
@@ -224,13 +227,13 @@ def run_amp_instance(**dict_params):
     start_time = time.perf_counter()
     
     seed_val = seed(mu, k, n, N, B, err_tol, mc, sparsity_tol)
-    key = random.PRNGKey(seed_val)
+    rng = np.random.default_rng(seed_val)
 
-    nz_idx = random.choice(key, N, (k,), replace=False)
-    nonzero_vals = random.normal(key, (k, B)) + mu
+    nz_idx = rng.choice(N, k, replace=False)
+    nonzero_vals = rng.normal(mu, 1, (k, B))
     X_true = jnp.zeros((N, B)).at[nz_idx].set(nonzero_vals)
     
-    A = random.normal(key, (n, N)) / jnp.sqrt(n)
+    A = rng.normal(0, 1, (n, N)) / jnp.sqrt(n)
     Y = A @ X_true
 
     X, R = jnp.zeros_like(X_true), Y
@@ -296,18 +299,18 @@ def read_and_do_local_experiment(json_file: str):
 
 
 if __name__ == '__main__':
-    do_sherlock_experiment('exp_dicts/AMP_matrix_recovery_JS_gaussian_nonzero_jaxcuda.json')
+    # do_sherlock_experiment('exp_dicts/AMP_matrix_recovery_JS_gaussian_nonzero_jaxcuda.json')
     # read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_JS_gaussian_nonzero_jaxcuda.json')
-    # d = run_amp_instance(**{'gaussian_mean': 0,
-    #                 'nonzero_rows': 50,
-    #                 'signal_nrow': 1000,
-    #                 'signal_ncol': 50,
-    #                 'num_measurements': 100,
-    #                 'err_tol': 0.0001,
-    #                 'sparsity_tol': 0.0001,
-    #                 'mc': 4,
-    #                 'err_explosion_tol': 100,
-    #                 'max_iter': 1000})
-    # print(d['rel_err'])
+    d = run_amp_instance(**{'gaussian_mean': 0,
+                    'nonzero_rows': 50,
+                    'signal_nrow': 1000,
+                    'signal_ncol': 50,
+                    'num_measurements': 100,
+                    'err_tol': 0.0001,
+                    'sparsity_tol': 0.0001,
+                    'mc': 4,
+                    'err_explosion_tol': 100,
+                    'max_iter': 1000})
+    print(d['rel_err'])
 
 
