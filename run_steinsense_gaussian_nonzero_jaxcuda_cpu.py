@@ -6,10 +6,8 @@ Created on Mon Jul  7 11:25:27 2025
 @author: apratimdey
 """
 
-import numpy as np
 import jax.numpy as jnp
-from jax import jit, lax, jacfwd, vmap, config
-import jax
+from jax import random, jit, lax, jacfwd, vmap, config, device_get
 from functools import partial
 from EMS.manager_new import read_json, do_on_cluster, get_gbq_credentials
 from dask.distributed import Client, LocalCluster
@@ -230,17 +228,18 @@ def run_amp_instance(**dict_params):
     start_time = time.perf_counter()
     
     seed_val = seed(mu, k, n, N, B, err_tol, mc, sparsity_tol)
-    rng = np.random.default_rng(seed_val)
-
-    nz_idx = rng.choice(N, k, replace=False)
-    nonzero_vals = rng.normal(mu, 1, (k, B))
+    
+    key = random.PRNGKey(seed_val)
+    key_idx, key_vals, key_A = random.split(key, 3)
+    
+    nz_idx = random.choice(key_idx, N, shape=(k,), replace=False)
+    nonzero_vals = random.normal(key_vals, (k, B)) + mu
+    
     X_true = jnp.zeros((N, B)).at[nz_idx].set(nonzero_vals)
-    
-    print(nonzero_vals[1,:])
-    
-    A = rng.normal(0, 1, (n, N)) / jnp.sqrt(n)
-    Y = A @ X_true
 
+    A = random.normal(key_A, (n, N)) / jnp.sqrt(n)
+    Y = A @ X_true
+    
     X, R = jnp.zeros_like(X_true), Y
     df   = None
     it = 0
@@ -261,7 +260,7 @@ def run_amp_instance(**dict_params):
 
         # ---- full statistics  (GPU → host) ------
         stats_gpu = recovery_stats_jax(X_true, X, A, Y, sparsity_tol)
-        stats_host  = jax.device_get(stats_gpu)
+        stats_host  = device_get(stats_gpu)
         observables = {k: v.item() for k, v in stats_host.items()}    # Device → Python
         time_since_start = time.perf_counter() - start_time
         observables.update({
@@ -288,7 +287,7 @@ def do_sherlock_experiment(json_file: str):
     with SLURMCluster(queue='donoho,stat,hns,owners,normal',
                       cores=1, memory='50GiB', processes=1,
                       walltime='24:00:00', death_timeout='60s') as cluster:
-        cluster.adapt(minimum = 10, maximum = 50, target_duration = "10h", interval = "30s")
+        cluster.adapt(minimum = 100, maximum = 500, target_duration = "10h", interval = "30s")
         logging.info(cluster.job_script())
         with Client(cluster) as client:
             do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
@@ -303,18 +302,18 @@ def read_and_do_local_experiment(json_file: str):
 
 
 if __name__ == '__main__':
-    # do_sherlock_experiment('exp_dicts/AMP_matrix_recovery_JS_gaussian_nonzero_jaxcuda.json')
+    do_sherlock_experiment('exp_dicts/AMP_matrix_recovery_JS_gaussian_nonzero_jaxcuda.json')
     # read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_JS_gaussian_nonzero_jaxcuda.json')
-    d = run_amp_instance(**{'gaussian_mean': 0,
-                    'nonzero_rows': 50,
-                    'signal_nrow': 1000,
-                    'signal_ncol': 50,
-                    'num_measurements': 100,
-                    'err_tol': 0.0001,
-                    'sparsity_tol': 0.0001,
-                    'mc': 4,
-                    'err_explosion_tol': 100,
-                    'max_iter': 1000})
-    print(d['rel_err'])
+    # d = run_amp_instance(**{'gaussian_mean': 0,
+    #                 'nonzero_rows': 50,
+    #                 'signal_nrow': 1000,
+    #                 'signal_ncol': 50,
+    #                 'num_measurements': 100,
+    #                 'err_tol': 0.0001,
+    #                 'sparsity_tol': 0.0001,
+    #                 'mc': 4,
+    #                 'err_explosion_tol': 100,
+    #                 'max_iter': 1000})
+    # print(d['rel_err'])
 
 
