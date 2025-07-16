@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Mon Jul  7 11:25:27 2025
+Created on Wed Jul 16 10:40:24 2025
 
 @author: apratimdey
 """
 
+from jax import config
+config.update("jax_enable_x64", True)
+import numpy as np
 import jax.numpy as jnp
-from jax import random, jit, lax, jacfwd, vmap, config, device_get
+from jax import jit, lax, jacfwd, vmap, device_get
 from functools import partial
 from EMS.manager_new import read_json, do_on_cluster, get_gbq_credentials
 from dask.distributed import Client, LocalCluster
@@ -25,7 +28,6 @@ dask.config.set({
     "distributed.nanny.timeouts.startup": "300s"   # 5 minutes
 })
 
-config.update("jax_enable_x64", False)
 
 CHUNK = 100
 
@@ -77,7 +79,6 @@ jac_js_singular = jit(
     vmap(jacfwd(js_singular_vec, argnums=0), in_axes=(0, None, None))
 )
 
-
 @jit
 def js_onsager_nonsingular(
     X:        jnp.ndarray,     # shape (N, B)
@@ -99,7 +100,6 @@ def js_onsager_singular(X, Z, U, inv_full):
     return (Z @ sumJ.T) / Z.shape[0]
 
 # ─── 2) FUSED AMP LOOP ─────────────────────────────────────────────────
-
 
 @jit
 def recovery_stats_jax(X_true, X_rec, A, Y_true, sparsity_tol):
@@ -159,7 +159,6 @@ def recovery_stats_jax(X_true, X_rec, A, Y_true, sparsity_tol):
     }
     return stats
 
-
 @partial(jit, static_argnames=("steps",))
 def amp_chunk(A, Y, X0, R0, err_tol, err_explosion_tol, *, X_true, steps):
     n, N = A.shape
@@ -176,30 +175,29 @@ def amp_chunk(A, Y, X0, R0, err_tol, err_explosion_tol, *, X_true, steps):
             X_noisy = X + A.T @ R
             Cov = jnp.cov(R.T)
             D, U = jnp.linalg.eigh(Cov)
-            D = jnp.round(D, 10)
             nonsingular_branch = jnp.all(D > 0)
     
             def do_nonsingular():
-                Sigma_inv = (U * (1 / (D + 1e-8))[None, :]) @ U.T
+                Sigma_inv = (U * (1 / D)[None, :]) @ U.T
                 X_denoised = v_js_nonsingular(X_noisy, Sigma_inv)
                 Rn = Y - A @ X_denoised + js_onsager_nonsingular(X_noisy, R, Sigma_inv)
-                return X_denoised, Rn
+                return X_denoised, Rn, jnp.array(0)
     
             def do_singular():
                 inv_full = jnp.where(D > 0, 1 / D, 0)
                 X_denoised = v_js_singular(X_noisy, U, inv_full)
                 Rn = Y - A @ X_denoised + js_onsager_singular(X_noisy, R, U, inv_full)
-                return X_denoised, Rn
-    
+                return X_denoised, Rn, jnp.array(1)
+
             return lax.cond(nonsingular_branch, do_nonsingular, do_singular)
         
-        X_new, R_new = lax.cond(new_stop, lambda _: (X, R), do_compute, operand=None)
+        X_new, R_new, branch_used = lax.cond(new_stop, lambda _: (X, R, jnp.array(-1)), do_compute, operand=None)
 
         stop_flag = stop_flag | new_stop
 
-        return (X_new, R_new, stop_flag), rel
+        return (X_new, R_new, stop_flag), (rel, branch_used)
 
-    (Xf, Rf, stop_final), rels = lax.scan(
+    (Xf, Rf, stop_final), (rels, branches) = lax.scan(
         step, (X0, R0, False), None, length=steps
     )
     
@@ -207,10 +205,11 @@ def amp_chunk(A, Y, X0, R0, err_tol, err_explosion_tol, *, X_true, steps):
     idx = jnp.argmax(hit)
     rel_at_stop = jnp.where(hit.any(), rels[idx], rels[-1])
 
-    return Xf, Rf, rel_at_stop, stop_final, steps
+    return Xf, Rf, rel_at_stop, stop_final, steps, branches
 
 
 def run_amp_instance(**dict_params):
+    
     mu = dict_params['gaussian_mean']
     k = dict_params['nonzero_rows']
     n = dict_params['num_measurements']
@@ -226,15 +225,13 @@ def run_amp_instance(**dict_params):
     
     seed_val = seed(mu, k, n, N, B, err_tol, mc, sparsity_tol)
     
-    key = random.PRNGKey(seed_val)
-    key_idx, key_vals, key_A = random.split(key, 3)
+    rng = np.random.default_rng(seed=seed_val)
+    nz_idx = rng.choice(N, k, replace=False)
+    nonzero_vals = rng.normal(mu, 1, (k, B))
     
-    nz_idx = random.choice(key_idx, N, shape=(k,), replace=False)
-    nonzero_vals = random.normal(key_vals, (k, B)) + mu
-    
-    X_true = jnp.zeros((N, B)).at[nz_idx].set(nonzero_vals)
+    X_true = jnp.zeros((N, B)).at[nz_idx].set(nonzero_vals).astype(jnp.float64)
 
-    A = random.normal(key_A, (n, N)) / jnp.sqrt(n)
+    A = rng.normal(0, 1, (n, N)) / jnp.sqrt(n)
     Y = A @ X_true
 
     X, R = jnp.zeros_like(X_true), Y
@@ -248,9 +245,12 @@ def run_amp_instance(**dict_params):
         # ---- heavy compute on GPU ---------------
         steps = min(CHUNK, max_iter - it)
         t0 = time.perf_counter()
-        X, R, rel, stop, used = amp_chunk(A, Y, X, R, err_tol, err_explosion_tol, X_true=X_true, steps=steps)
+        X, R, rel, stop, used, branch_trace = amp_chunk(A, Y, X, R, err_tol, err_explosion_tol, X_true=X_true, steps=steps)
         X.block_until_ready()
         elapsed = time.perf_counter() - t0
+        
+        branches = device_get(branch_trace)
+
         it += used
         min_rel = min(min_rel, rel.item())
         # -----------------------------------------
@@ -264,7 +264,10 @@ def run_amp_instance(**dict_params):
             'iter_count'          : int(it),
             'min_rel_err'         : min_rel,
             'chunk_time' : elapsed,
-            'time_since_start': time_since_start
+            'time_since_start': time_since_start,
+            'skipped': int((branches == -1).sum()),
+            'singular': int((branches == 1).sum()),
+            'nonsingular': int((branches == 0).sum())
         })
         rows.append({**dict_params, **observables})
         # -----------------------------------------
@@ -283,8 +286,14 @@ def do_sherlock_experiment(json_file: str):
     exp = read_json(json_file)
     with SLURMCluster(queue='donoho,gpu,stat,hns,owners,normal',
                       cores=1, memory='10GiB', processes=1,
-                      walltime='24:00:00', job_extra_directives=['--gres=gpu:1', '--constraint="GPU_SKU:A100_SXM4|GPU_SKU:H100_SXM5"'], death_timeout='60s') as cluster:
-        cluster.adapt(minimum = 50, maximum = 100, target_duration = "10h", interval = "30s")
+                      walltime='24:00:00', job_extra_directives=['--gres=gpu:1',
+                                                                 '--constraint="GPU_SKU:A100_SXM4|GPU_SKU:H100_SXM5"'],
+                      job_script_prologue=[
+        'module load cuda/12.2',
+        'export JAX_ENABLE_X64=true'
+    ],
+                      death_timeout='60s') as cluster:
+        cluster.adapt(minimum = 50, maximum = 200, target_duration = "10h", interval = "30s")
         logging.info(cluster.job_script())
         with Client(cluster) as client:
             do_on_cluster(exp, run_amp_instance, client, credentials=get_gbq_credentials())
@@ -303,15 +312,15 @@ if __name__ == '__main__':
     do_sherlock_experiment('exp_dicts/AMP_matrix_recovery_JS_gaussian_nonzero_jaxcuda.json')
     # read_and_do_local_experiment('exp_dicts/AMP_matrix_recovery_JS_gaussian_nonzero_jaxcuda.json')
     # d = run_amp_instance(**{'gaussian_mean': 0,
-    #                 'nonzero_rows': 50,
-    #                 'signal_nrow': 1000,
+    #                 'nonzero_rows': 1000,
+    #                 'signal_nrow': 5000,
     #                 'signal_ncol': 50,
-    #                 'num_measurements': 100,
+    #                 'num_measurements': 1147,
     #                 'err_tol': 0.0001,
     #                 'sparsity_tol': 0.0001,
-    #                 'mc': 4,
+    #                 'mc': 0,
     #                 'err_explosion_tol': 100,
-    #                 'max_iter': 1000})
-    # print(d['rel_err'])
+    #                 'max_iter': 5000})
+    # print(d[['rel_err', 'singular', 'nonsingular']])
 
 
