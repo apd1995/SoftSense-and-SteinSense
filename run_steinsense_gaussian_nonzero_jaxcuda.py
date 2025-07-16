@@ -289,7 +289,7 @@ def do_sherlock_experiment(json_file: str):
                       walltime='24:00:00', job_extra_directives=['--gres=gpu:1',
                                                                  '--constraint="GPU_SKU:A100_SXM4|GPU_SKU:H100_SXM5"'],
                       job_script_prologue=[
-        'module load cuda/12.2',
+        'module load cuda/12.6.1',
         'export JAX_ENABLE_X64=true'
     ],
                       death_timeout='60s') as cluster:
