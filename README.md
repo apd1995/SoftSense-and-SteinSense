@@ -1,2 +1,2 @@
-# AMP_matrix_recovery
-Approximate Message Passing algorithm to recover matrix-valued signal from undersampled measurements
+# Vector Compressed Sensing
+Algorithms to recover potentially high dimensional vectors from undersampled measurements
